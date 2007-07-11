@@ -3,8 +3,13 @@
 
 - implement iq-auth!!!!
 
-- make error callback of parser ultimately to an error object
-  - use exceptions maybe?
+- fix problem that xml::writer writes after <stream/> ahs been written
+  - reproduce by conflicting resources!
+
+- test the xml parse error object somehow!
+
+- add context field to IQ error for all the places origin from IQ errors
+  (bind_error, session_error, ...)
 
 - Net::XMPP2::Client
   - find a way to distinguish presences from JIDs that
@@ -21,15 +26,13 @@
    - test Net::XMPP2::Error: bind_error and stream_error (mostly done).
    - in band registration and un-registration!!!
       - finish in-band-registration XEP
+      - document events
    later:
       - make dns resolution async!
       - make extensions more optional and reentrant
 
 - Net::XMPP2::IM missing functionality to be RFC 3921 conform:
    - 7.2.  Business Rules
-
-- Implement XEP-0004: Data Forms
-   - see also: XEP-0068: Field Standardization for Data Forms
 
 - Implement XEP-0082: XMPP Date and Time Profiles
    - util functions to convert them to unix timestamps
@@ -48,4 +51,4 @@
 
 - Implement XEP-0030: Service Discovery
    - see also: XEP-0128: Service Discovery Extensions
-   - missing support multiple identities when answering requests
+   - missing feature: building up a item tree for discovery

@@ -2,9 +2,10 @@ package Net::XMPP2::Client;
 use strict;
 use AnyEvent;
 use Net::XMPP2::IM::Connection;
-use Net::XMPP2::Util qw/stringprep_jid prep_bare_jid/;
+use Net::XMPP2::Util qw/stringprep_jid prep_bare_jid dump_twig_xml/;
 use Net::XMPP2::Namespaces qw/xmpp_ns/;
 use Net::XMPP2::Event;
+use Net::XMPP2::Extendable;
 use Net::XMPP2::IM::Account;
 
 #use XML::Twig;
@@ -21,11 +22,11 @@ use Net::XMPP2::IM::Account;
 #   }
 #}
 
-our @ISA = qw/Net::XMPP2::Event/;
+our @ISA = qw/Net::XMPP2::Event Net::XMPP2::Extendable/;
 
 =head1 NAME
 
-Net::XMPP2::Client - A XMPP Client abstraction
+Net::XMPP2::Client - XMPP Client abstraction
 
 =head1 SYNOPSIS
 
@@ -66,7 +67,27 @@ sub new {
    my $class = ref($this) || $this;
    my $self = { @_ };
    bless $self, $class;
+   if ($self->{debug}) {
+      $self->reg_cb (
+         debug_recv => sub {
+            my ($self, $acc, $data) = @_;
+            printf "recv>> %s\n%s", $acc->jid, dump_twig_xml ($data)
+         },
+         debug_send => sub {
+            my ($self, $acc, $data) = @_;
+            printf "send<< %s\n%s", $acc->jid, dump_twig_xml ($data)
+         },
+      )
+   }
    return $self;
+}
+
+sub add_extension {
+   my ($self, $ext) = @_;
+   $self->add_forward ($ext, sub {
+      my ($self, $ext, $ev, $acc, @args) = @_;
+      $ext->event ($ev, $acc->connection (), @args);
+   });
 }
 
 =head2 add_account ($jid, $password, $host, $port)
@@ -199,11 +220,11 @@ sub remove_account {
    delete $self->{accounts}->{$acc};
 }
 
-=head2 send_message ($msg, $dest_jid, $src)
+=head2 send_message ($msg, $dest_jid, $src, $type)
 
 Sends a message to the destination C<$dest_jid>.
 C<$msg> can either be a string or a L<Net::XMPP2::IM::Message> object.
-If C<$msg> is such an object C<$dest_jid> is optional, and will, when
+If C<$msg> is such an object C<$dest_jid> is optional, but will, when
 passed, override the destination of the message.
 
 C<$src> is optional. It specifies which account to use
@@ -215,10 +236,17 @@ are connected.
 C<$src> can either be a JID or a L<Net::XMPP2::IM::Account> object as returned
 by C<add_account> and C<get_account>.
 
+C<$type> is optional but overrides the type of the message object in C<$msg>
+if C<$msg> is such an object.
+
+C<$type> should be 'chat' for normal chatter. If no C<$type> is specified
+the type of the message defaults to the value documented in L<Net::XMPP2::IM::Message>
+(should be 'normal').
+
 =cut
 
 sub send_message {
-   my ($self, $msg, $dest_jid, $src) = @_;
+   my ($self, $msg, $dest_jid, $src, $type) = @_;
 
    unless (ref $msg) {
       $msg = Net::XMPP2::IM::Message->new (body => $msg);
@@ -229,6 +257,8 @@ sub send_message {
          or die "send_message: \$dest_jid is not a proper JID";
       $msg->to ($jid);
    }
+
+   $msg->type ($type) if defined $type;
 
    my $srcacc;
    if (ref $src) {
@@ -269,7 +299,7 @@ sub get_accounts {
    values %{$self->{accounts}}
 }
 
-=head2 get_accounts ()
+=head2 get_connected_accounts ()
 
 Returns a list of connected L<Net::XMPP2::IM::Account>s.
 
@@ -400,7 +430,7 @@ Aside fom those, these events can be registered on with C<reg_cb>:
 
 This event is sent when the C<$account> was successfully connected.
 
-=item connect_error => $account
+=item connect_error => $account, $reason
 
 This event is emitted when an error occured in the connection process for the
 account C<$account>.

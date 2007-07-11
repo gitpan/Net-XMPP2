@@ -6,12 +6,15 @@ use Net::XMPP2::Error::SASL;
 use Net::XMPP2::Error::IQ;
 use Net::XMPP2::Error::Register;
 use Net::XMPP2::Error::Stanza;
+use Net::XMPP2::Error::Stream;
 use Net::XMPP2::Error::Presence;
 use Net::XMPP2::Error::Message;
+use Net::XMPP2::Error::Parser;
+use Net::XMPP2::Error::Exception;
 
 =head1 NAME
 
-Net::XMPP2::Error - An error class hierarchy for error reporting
+Net::XMPP2::Error - Error class hierarchy for error reporting
 
 =head1 SYNOPSIS
 

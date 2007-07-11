@@ -2,10 +2,11 @@ package Net::XMPP2::Util;
 use strict;
 use Encode;
 use Net::LibIDN qw/idn_prep_name idn_prep_resource idn_prep_node/;
+use Net::XMPP2::Namespaces qw/xmpp_ns_maybe/;
 require Exporter;
 our @EXPORT_OK = qw/resourceprep nodeprep prep_join_jid join_jid
                     split_jid stringprep_jid prep_bare_jid bare_jid
-                    is_bare_jid/;
+                    is_bare_jid simxml dump_twig_xml/;
 our @ISA = qw/Exporter/;
 
 =head1 NAME
@@ -171,7 +172,103 @@ sub is_bare_jid {
    defined $res
 }
 
+=item B<simxml ($w, %xmlstruct)>
+
+This method takes a L<XML::Writer> as first argument (C<$w>) and the
+rest key value pairs:
+
+   simxml ($w,
+      defns => '<xmlnamespace>',
+      node => <node>,
+      prefixes => { prefix => namespace, ... },
+      fb_ns => '<fallbackxmlnamespace for all elementes without ns or dns field>',
+   );
+
+Where node is:
+
+   <node> := {
+                ns => '<xmlnamespace>',
+                name => 'tagname',
+                attrs => [ ['name', 'value'], ... ],
+                childs => [ <node>, ... ]
+             }
+           | {
+                dns => '<xmlnamespace>',  # dns will set that namespace to the default namespace before using it.
+                name => 'tagname',
+                attrs => [ ['name', 'value'], ... ],
+                childs => [ <node>, ... ]
+             }
+           | "textnode"
+
+Please note: C<childs> stands for C<child sequence> :-)
+
 =back
+
+=cut
+
+sub simxml {
+   my ($w, %desc) = @_;
+
+   if (my $n = $desc{defns}) {
+      $w->addPrefix (xmpp_ns_maybe ($n), '');
+   }
+
+   if (my $p = $desc{prefixes}) {
+      for (keys %{$p || {}}) {
+         $w->addPrefix (xmpp_ns_maybe ($_), $p->{$_});
+      }
+   }
+
+   my $node = $desc{node};
+
+   if (not defined $node) {
+      return;
+
+   } elsif (ref ($node)) {
+      my $ns = $node->{dns} ? $node->{dns} : $node->{ns};
+      $ns = $ns ? $ns : $desc{fb_ns};
+      $ns = xmpp_ns_maybe ($ns);
+      my $tag = $ns ? [$ns, $node->{name}] : $node->{name};
+
+      if (@{$node->{childs} || []}) {
+
+         $w->startTag ($tag, @{$node->{attrs} || []});
+
+            my (@args);
+            if ($node->{defns}) { @args = (defns => $node->{defns}) }
+
+            for (@{$node->{childs}}) {
+               if (ref ($_) && $_->{dns}) { push @args, (defns => $_->{dns}) }
+               if (ref ($_) && $_->{ns})  {
+                  push @args, (fb_ns => $_->{ns})
+               } else {
+                  push @args, (fb_ns => $desc{fb_ns})
+               }
+               simxml ($w, node => $_, @args)
+            }
+
+         $w->endTag;
+
+      } else {
+         $w->emptyTag ($tag, @{$node->{attrs} || []});
+      }
+   } else {
+      $w->characters ($node);
+   }
+}
+
+
+sub dump_twig_xml {
+   my $data = shift;
+   require XML::Twig;
+   my $t = XML::Twig->new;
+   if ($t->safe_parse ("<deb>$data</deb>")) {
+      $t->set_pretty_print ('indented');
+      return ($t->sprint . "\n");
+   } else {
+      return "$data\n";
+   }
+}
 
 =head1 AUTHOR
 

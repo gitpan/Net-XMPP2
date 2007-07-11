@@ -8,7 +8,7 @@ our @ISA = qw/Net::XMPP2::Connection/;
 
 =head1 NAME
 
-Net::XMPP2::IM::Connection - A XML stream that implements the XMPP RFC 3921.
+Net::XMPP2::IM::Connection - "XML" stream that implements the XMPP RFC 3921.
 
 =head1 SYNOPSIS
 
@@ -77,6 +77,20 @@ sub new {
          $self->init_connection;
       }
    });
+
+   my $proxy_cb = sub {
+      my ($self, $er) = @_;
+      $self->event (error => $er);
+      1
+   };
+
+   $self->reg_cb (
+      session_error  => $proxy_cb,
+      roster_error   => $proxy_cb,
+      presence_error => $proxy_cb,
+      message_error  => $proxy_cb,
+   );
+
    $self
 }
 
@@ -307,7 +321,8 @@ This event is generated when C<$contact> unsubscribes from your presence.
 Setting the in C<$rdoit> referenced scalar to 1 will also let you unsubscribe
 from his presence.
 
-If you want to unsubscribe later from him call L<Net::XMPP2::IM::Contact::send_unsubscribed> on C<$contact>.
+If you want to unsubscribe later from him call the C<send_unsubscribed> method
+of L<Net::XMPP2::IM::Contact> on C<$contact>.
 
 =item contact_unsubscribed => $roster, $contact
 
