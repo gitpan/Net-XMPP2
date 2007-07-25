@@ -7,7 +7,6 @@ Net::XMPP2::Ext::Disco::Items - Service discovery items
 
 =head1 SYNOPSIS
 
-
 =head1 DESCRIPTION
 
 This class represents the result of a disco items request
@@ -41,6 +40,7 @@ sub xml_node {
 sub init {
    my ($self) = @_;
    my $node = $self->{xmlnode};
+   return unless $node;
 
    my (@items) = $node->find_all ([qw/disco_items item/]);
    for (@items) {

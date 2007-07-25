@@ -119,11 +119,19 @@ If C<$bool> is true no SSL will be used.
 sub new {
    my $this = shift;
    my $class = ref($this) || $this;
-   my $self = $class->SUPER::new (language => 'en', @_);
+   my $self =
+      $class->SUPER::new (
+         language         => 'en',
+         stream_namespace => 'client',
+         @_
+      );
 
    $self->{parser} = new Net::XMPP2::Parser;
    $self->{writer} = Net::XMPP2::Writer->new (
-      write_cb => sub { $self->write_data ($_[0]) }
+      write_cb     => sub { $self->write_data ($_[0]) },
+      send_iq_cb   => sub { $self->event (send_iq_hook => @_) },
+      send_msg_cb  => sub { $self->event (send_message_hook => @_) },
+      send_pres_cb => sub { $self->event (send_presence_hook => @_) },
    );
 
    $self->{parser}->set_stanza_cb (sub {
@@ -161,15 +169,9 @@ sub new {
       $self->{resource} = $res if defined $res;
    }
 
-   for (qw/username password domain/) {
-      die "No '$_' argument given to new, but '$_' is required\n"
-         unless $self->{$_};
-   }
-
    my $proxy_cb = sub {
       my ($self, $er) = @_;
       $self->event (error => $er);
-      1
    };
 
    $self->reg_cb (
@@ -184,14 +186,12 @@ sub new {
                exception => $ex, context => 'iq result callback execution'
             )
          );
-         1
       },
       tls_error => sub {
          my ($self) = @_;
          $self->event (error =>
             Net::XMPP2::Error->new (text => 'tls_error: tls negotiation failed')
          );
-         1
       },
    );
 
@@ -228,7 +228,8 @@ sub connect {
 
    my ($host, $port) = ($self->{domain}, $self->{port} || 5222);
    if ($self->{override_host}) {
-      ($host, $port) = ($self->{override_host}, $self->{override_port} || 5222);
+      $host = $self->{override_host};
+      $port = $self->{override_port} if defined $self->{override_port};
 
    } else {
       unless ($no_srv_rr) {
@@ -317,7 +318,9 @@ sub handle_stanza {
       $self->enable_ssl;
       $self->{parser}->init;
       $self->{writer}->init;
-      $self->{writer}->send_init_stream ($self->{language}, $self->{domain});
+      $self->{writer}->send_init_stream (
+         $self->{language}, $self->{domain}, $self->{stream_namespace}
+      );
 
    } elsif ($node->eq (tls => 'failure')) {
       $self->event ('tls_error');
@@ -346,9 +349,6 @@ sub handle_stanza {
 
    } elsif ($node->eq (stream => 'error')) {
       $self->handle_error ($node);
-
-   } else {
-      warn "Didn't understood stanza: '" . $node->name . "'";
    }
 }
 
@@ -360,7 +360,7 @@ Initiate the XML stream.
 
 sub init {
    my ($self) = @_;
-   $self->{writer}->send_init_stream ($self->{language}, $self->{domain});
+   $self->{writer}->send_init_stream ($self->{language}, $self->{domain}, $self->{stream_namespace});
 }
 
 =item B<is_connected ()>
@@ -515,6 +515,12 @@ sub handle_iq {
 
 sub send_sasl_auth {
    my ($self, @mechs) = @_;
+
+   for (qw/username password domain/) {
+      die "No '$_' argument given to new, but '$_' is required\n"
+         unless $self->{$_};
+   }
+
    $self->{writer}->send_sasl_auth (
       (join ' ', map { $_->text } @mechs),
       $self->{username}, $self->{domain}, $self->{password}
@@ -537,7 +543,8 @@ sub handle_stream_features {
 
    } elsif (not $self->{authenticated}) {
       my $continue = 1;
-      $self->event (stream_pre_authentication => \$continue);
+      my (@ret) = $self->event (stream_pre_authentication => \$continue);
+      $continue = pop @ret if @ret;
       if ($continue) {
          $self->authenticate;
       }
@@ -581,7 +588,7 @@ sub handle_sasl_success {
    $self->{authenticated} = 1;
    $self->{parser}->init;
    $self->{writer}->init;
-   $self->{writer}->send_init_stream ($self->{language}, $self->{domain});
+   $self->{writer}->send_init_stream ($self->{language}, $self->{domain}, $self->{stream_namespace});
 }
 
 sub handle_error {
@@ -687,6 +694,7 @@ sub do_rebind {
    );
 }
 
+
 =item B<jid>
 
 After the stream has been bound to a resource the JID can be retrieved via this
@@ -717,14 +725,15 @@ These events can be registered on with C<reg_cb>:
 This event is sent when a stream feature (<features>) tag is received. C<$node> is the
 L<Net::XMPP2::Node> object that represents the <features> tag.
 
-=item stream_pre_authentication => $rcontinue
+=item stream_pre_authentication
 
 This event is emitted after TLS/SSL was initiated (if enabled) and before any
-authentication happened. C<$rcontinue> is a reference to a scalar that per default
-holds a true value. If that scalar is true the authentication will continue
-after handling this event. If you set C<$$rcontinue> to a false value
-the authentication will stop and you have to call the C<authenticate>
-method later.
+authentication happened.
+
+The return value of the first event callback that is called decides what happens next.
+If it is true value the authentication continues. If it is undef or a false value
+authentication is stopped and you need to call C<authentication> later.
+value
 
 This event is usually used when you want to do in-band registration,
 see also L<Net::XMPP2::Ext::Registration>.
@@ -742,7 +751,7 @@ This event is generated whenever some error occured.
 C<$error> is an instance of L<Net::XMPP2::Error>.
 Trivial error reporting may look like this:
 
-   $con->reg_cb (error => sub { warn "xmpp error: " . $_[1]->string . "\n"; 1 });
+   $con->reg_cb (error => sub { warn "xmpp error: " . $_[1]->string . "\n" });
 
 Basically this event is a collect event for all other error events.
 
@@ -868,6 +877,56 @@ is still false after all event handlers were executed an error iq will be genera
 
 If the C<$result_cb> of a C<send_iq> operation somehow threw a exception
 or failed this event will be generated.
+
+=item send_iq_hook => $id, $type, $attrs
+
+This event lets you add any desired number of additional create callbacks
+to a IQ stanza that is about to be sent.
+
+C<$id>, C<$type> are described in the documentation of C<send_iq> of
+L<Net::XMPP2::Writer>. C<$attrs> is the hashref to the C<%attrs> hash that can
+be passed to C<send_iq> and also has the exact same semantics as described in
+the documentation of C<send_iq>.
+
+The return values of the event callbacks are interpreted as C<$create_cb> value as
+documented for C<send_iq>. (That means you can for example return a callback
+that fills the IQ).
+
+Example:
+
+   # this appends a <test/> element to all outgoing IQs
+   # and also a <test2/> element to all outgoing IQs
+   $con->reg_cb (send_iq_hook => sub {
+      my ($id, $type, $attrs) = @_;
+      (sub {
+         my $w = shift; # $w is a XML::Writer instance
+         $w->emptyTag ('test');
+      }, {
+         node => { name => "test2" } # see also simxml() defined in Net::XMPP2::Util
+      })
+   });
+
+=item send_message_hook => $id, $to, $type, $attrs
+
+This event lets you add any desired number of additional create callbacks
+to a message stanza that is about to be sent.
+
+C<$id>, C<$to>, C<$type> and the hashref C<$attrs> are described in the documentation
+for C<send_message> of L<Net::XMPP2::Writer> (C<$attrs> is C<%attrs> there).
+
+To actually append something you need to return something, what you need to return
+is described in the C<send_iq_hook> event above.
+
+=item send_presence_hook => $id, $type, $attrs
+
+This event lets you add any desired number of additional create callbacks
+to a presence stanza that is about to be sent.
+
+C<$id>, C<$type> and the hashref C<$attrs> are described in the documentation
+for C<send_presence> of L<Net::XMPP2::Writer> (C<$attrs> is C<%attrs> there).
+
+To actually append something you need to return something, what you need to return
+is described in the C<send_iq_hook> event above.
 
 =back
 

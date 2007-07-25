@@ -1,5 +1,28 @@
 Revision history for Net-XMPP2
 
+0.03 Wed Jul 25 12:04:06 CEST 2007
+         - fundamentally changed how events work, it's now less
+           errorprone for the programmer (you don't have to return
+           a true value now all the time and can call $self->unreg_me
+           for unregistering a callback).
+           Because of this change send_*_hook and contact_did_* events
+           have changed their arguments.
+         - implemented SAX event generator for easier integration
+           with other XML libraries and generation of DOM.
+         - added the possibility to completly restore the original
+           XML data from a Net::XMPP2::Node.
+         - implemented the component protocol to establish a component
+           stream with a server.
+         - reordered events a bit so that session_ready comes after
+           roster retrieval (when it is retrieved)
+         - added possibility to set the initial presence priority
+           or prevent sending of initial presence
+           (see Net::XMPP2::IM::Connection).
+         - fixed some minor issue with handling invalid disco results
+         - added send_*_hook event hooks for future extensions
+           like the entity capabilities to be able to add payload
+           to outgoing stanzas
+
 0.02 Wed Jul 11 22:55:56 CEST 2007
          - added iq_xml event
          - added development client example in samples/devcl/

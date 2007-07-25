@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:                Net-XMPP2
-version:             0.02
+version:             0.03
 abstract:            An implementation of the XMPP Protocol
 license:             perl
 generated_by:        ExtUtils::MakeMaker version 6.32
@@ -8,6 +8,7 @@ distribution_type:   module
 requires:     
     AnyEvent:                      0
     Authen::SASL:                  0
+    Digest::SHA1:                  0
     MIME::Base64:                  0
     Net::DNS:                      0
     Net::LibIDN:                   0

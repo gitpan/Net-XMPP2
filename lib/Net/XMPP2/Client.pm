@@ -67,6 +67,7 @@ sub new {
    my $class = ref($this) || $this;
    my $self = { @_ };
    bless $self, $class;
+
    if ($self->{debug}) {
       $self->reg_cb (
          debug_recv => sub {
@@ -148,7 +149,15 @@ sub update_connections {
 
    for my $acc (values %{$self->{accounts}}) {
       unless ($acc->is_connected) {
-         my $con = $acc->spawn_connection;
+         my %args = (initial_presence => 10);
+
+         if (defined $self->{presence}) {
+            if (defined $self->{presence}->{priority}) {
+               $args{initial_presence} = $self->{presence}->{priority};
+            }
+         }
+
+         my $con = $acc->spawn_connection (%args);
 
          $con->add_forward ($self, sub {
             my ($con, $self, $ev, @arg) = @_;
@@ -159,13 +168,14 @@ sub update_connections {
             session_ready => sub {
                my ($con) = @_;
                $self->event (connected => $acc);
-               0 # do once
+               if (defined $self->{presence}) {
+                  $con->send_presence (undef, undef, %{$self->{presence} || {}});
+               }
+               $con->unreg_me
             },
-            # debug_recv      => sub { print "RRRRRRRRECVVVVVV:\n"; _dumpxml ($_[1]); 1 },
-            # debug_send      => sub { print "SSSSSSSSENDDDDDD:\n"; _dumpxml ($_[1]); 1 },
             disconnect => sub {
                delete $self->{accounts}->{$acc};
-               0
+               $_[0]->unreg_me
             }
          );
 
@@ -403,14 +413,15 @@ C<send_presence> method of L<Net::XMPP2::Writer>.
 sub set_presence {
    my ($self, $show, $status, $priority) = @_;
 
+   $self->{presence} = {
+      show     => $show,
+      status   => $status,
+      priority => $priority
+   };
+
    for my $ac ($self->get_connected_accounts) {
       my $con = $ac->connection ();
-      $con->send_presence (
-         undef, undef,
-         show => $show,
-         status => $status,
-         priority => $priority
-      );
+      $con->send_presence (undef, undef, %{$self->{presence}});
    }
 }
 

@@ -49,6 +49,15 @@ even presences will be stored in there, except that the C<get_contacts>
 method on the roster object won't return anything as there are
 no roster items.
 
+=item initial_presence => $priority
+
+This sets whether the initial presence should be sent. C<$priority>
+should be the priority of the initial presence. The default value
+for the initial presence C<$priority> is 10.
+
+If you pass a undefined value as C<$priority> no initial presence will
+be sent!
+
 =back
 
 =cut
@@ -56,18 +65,25 @@ no roster items.
 sub new {
    my $this = shift;
    my $class = ref($this) || $this;
-   my $self = $class->SUPER::new (@_);
+
+   my %args = @_;
+
+   unless (exists $args{initial_presence}) {
+      $args{initial_presence} = 10;
+   }
+
+   my $self = $class->SUPER::new (%args);
 
    $self->{roster} = Net::XMPP2::IM::Roster->new (connection => $self);
 
    $self->reg_cb (message_xml =>
-      sub { shift @_; $self->handle_message (@_);    1 });
+      sub { shift @_; $self->handle_message (@_);  });
    $self->reg_cb (presence_xml =>
-      sub { shift @_; $self->handle_presence (@_);   1 });
+      sub { shift @_; $self->handle_presence (@_); });
    $self->reg_cb (iq_set_request_xml =>
-      sub { shift @_; $self->handle_iq_set (@_);     1 });
+      sub { shift @_; $self->handle_iq_set (@_);   });
    $self->reg_cb (disconnect =>
-      sub { shift @_; $self->handle_disconnect (@_); 1 });
+      sub { shift @_; $self->handle_disconnect (@_); });
 
    $self->reg_cb (stream_ready => sub {
       my ($jid) = @_;
@@ -81,7 +97,6 @@ sub new {
    my $proxy_cb = sub {
       my ($self, $er) = @_;
       $self->event (error => $er);
-      1
    };
 
    $self->reg_cb (
@@ -114,13 +129,26 @@ sub send_session_iq {
 
 sub init_connection {
    my ($self) = @_;
-   $self->{session_active} = 1;
    if ($self->{dont_retrieve_roster}) {
-      $self->send_presence;
+      $self->initial_presence;
+      $self->{session_active} = 1;
+      $self->event ('session_ready');
+
    } else {
-      $self->retrieve_roster (sub { $self->send_presence });
+      $self->retrieve_roster (sub {
+         $self->initial_presence;
+         $self->{session_active} = 1;
+         $self->event ('session_ready');
+      });
    }
-   $self->event ('session_ready');
+}
+
+sub initial_presence {
+   my ($self) = @_;
+   if (defined $self->{initial_presence}) {
+      $self->send_presence (undef, undef, priority => $self->{initial_presence});
+   }
+   # else do nothing
 }
 
 =item B<retrieve_roster ($cb)>
@@ -300,12 +328,16 @@ C<$msg> is a L<Net::XMPP2::IM::Message> object.
 This event is emitted when a message stanza error was received.
 C<$error> will be an L<Net::XMPP2::Error::Message> error object.
 
-=item contact_request_subscribe => $roster, $contact, $rdoit
+=item contact_request_subscribe => $roster, $contact
 
 This event is generated when the C<$contact> wants to subscribe
-to your presence. C<$rdoit> is a reference to a scalar. Setting
-the referenced scalar to 1 will accept the subscription request and send
-a subscribed presence.
+to your presence.
+
+If any of the event callbacks for this event return a true value then the
+subscription request is accepted and a subscribed presence is sent.  If all
+callbacks return a false value the subscription request is cancelled.  If none
+of the callbacks return anything (all return an empty list) nothing of the
+former two things are done.
 
 If you want to accept or decline the request later, call
 C<send_subscribed> method of L<Net::XMPP2::IM::Contact> or
@@ -318,8 +350,9 @@ This event is generated when C<$contact> subscribed to your presence successfull
 =item contact_did_unsubscribe => $roster, $contact, $rdoit
 
 This event is generated when C<$contact> unsubscribes from your presence.
-Setting the in C<$rdoit> referenced scalar to 1 will also let you unsubscribe
-from his presence.
+
+Returning a true value from any event callback will also unsubscribe you from
+the presence of the contact.
 
 If you want to unsubscribe later from him call the C<send_unsubscribed> method
 of L<Net::XMPP2::IM::Contact> on C<$contact>.

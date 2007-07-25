@@ -8,11 +8,11 @@ Net::XMPP2 - An implementation of the XMPP Protocol
 
 =head1 VERSION
 
-Version 0.02
+Version 0.03
 
 =cut
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 =head1 SYNOPSIS
 
@@ -95,6 +95,10 @@ For SSL connections.
 
 For SRV RR lookups.
 
+=item L<Digest::SHA1>
+
+For component authentication.
+
 =back
 
 And yes, all these are essential for XMPP communication. Even though 'instant
@@ -112,9 +116,32 @@ Here are some notes to the releases (release of this version is at top):
 
 =over 4
 
+=item * 0.03
+
+This release adds new events for attaching information to "XML" stanzas that
+are in transmission to the server. See also the events C<send_*_hook> in
+L<Net::XMPP2::Connection>.
+
+The event callbacks als don't have to return a true value anymore. What the
+return values do depends on the event now.
+
+The highlight of this release is the implementation of XEP-0114, the Jabber
+Component Protocol.
+
+It's possible to get a DOM tree from a L<Net::XMPP2::Node> now and also to
+receive the original parsed "XML" from it, which should enable full access to
+the "XML" data that was received. This also allows easy integration with other
+XML Perl modules.
+
+You can also set the initial priority of the presence in
+L<Net::XMPP2::IM::Connection> now.
+
+Please consult the Changes file for greater detail about bugfixes and new
+features.
+
 =item * 0.02
 
-This release adds lots of small improvements on the API (mostly new events),
+This release adds lots of small improvements to the API (mostly new events),
 and also some bugfixes here and there. The release also comes with some
 new examples, you might want to take a look at the L</EXAMPLES> section.
 
@@ -144,12 +171,6 @@ todo items killed from the TODO file.
 
 There are still lots of items on the TODO list (see also the TODO file
 in the distribution of Net::XMPP2).
-
-Sadly this module still misses some decent DOM implementation. Do you know some
-decent DOM Level 2 implementation for Perl? (I considered switchting to
-L<XML::LibXML> but I somehow have more trust in the C<expat> XML parser, maybe
-someone wants to implement L<XML::LibXML> based parsing for me (and of course a
-DOM interface for L<Net::XMPP2::Node>?)
 
 =head1 Why (yet) another XMPP module?
 
@@ -245,6 +266,10 @@ value for someone. You might note L<samples/EVQ.pm> which is a module that
 handles request-throttling (You don't want to flood the server and risk
 getting the admins attention :).
 
+=item B<samples/simple_component>
+
+This is a (basic) skeleton for a jabber component.
+
 =back
 
 For others, which the author might forgot or didn't want to
@@ -264,8 +289,8 @@ Please note that I'm currently (July 2007) the only developer on this project
 and I'm very busy with my studies in Computer Science in Summer 2007. If you
 want to ease my workload or want timely releases, please send me patches instead
 of bug reports or feature requests. I won't forget the reports or requests if
-you can't or didn't send patches, but it can take a long time until I get enough
-time to fix/implement them.
+you can't or didn't send patches, but I can't gurantee immediate response.
+But I will of course try to fix/implement them as soon as possible!
 
 Also try to be as precise as possible with bug reports, if you can't send a
 patch, it would be best if you find out which code doesn't work and tell me

@@ -1,10 +1,12 @@
 package Net::XMPP2::Writer;
 use strict;
 use XML::Writer;
-use Authen::SASL;
+use Authen::SASL qw/Perl/;
 use MIME::Base64;
 use Net::XMPP2::Namespaces qw/xmpp_ns/;
 use Net::XMPP2::Util qw/simxml/;
+use Digest::SHA1 qw/sha1_hex/;
+use Encode;
 
 =head1 NAME
 
@@ -107,7 +109,13 @@ And calls C<init>.
 sub new {
    my $this = shift;
    my $class = ref($this) || $this;
-   my $self = { write_cb => sub {}, @_ };
+   my $self = {
+      write_cb     => sub {},
+      send_iq_cb   => sub {},
+      send_msg_cb  => sub {},
+      send_pres_cb => sub {},
+      @_
+   };
    bless $self, $class;
    $self->init;
    return $self;
@@ -137,27 +145,51 @@ sub flush {
    $self->{write_cb}->(substr $self->{write_buf}, 0, (length $self->{write_buf}), '');
 }
 
-=item B<send_init_stream ($domain)>
+=item B<send_init_stream ($language, $domain, $namespace)>
 
 This method will generate a XMPP stream header. C<$domain> has to be the
 domain of the server (or endpoint) we want to connect to.
 
+C<$namespace> is the namespace uri or the tag (from L<Net::XMPP2::Namespaces>)
+for the stream namespace. (This is used by L<Net::XMPP2::Component> to connect
+as component to a server). C<$namespace> can also be undefined, in this case
+the C<client> namespace will be used.
+
 =cut
 
 sub send_init_stream {
-   my ($self, $language, $domain) = @_;
+   my ($self, $language, $domain, $ns) = @_;
+
+   $ns ||= 'client';
 
    my $w = $self->{writer};
    $w->xmlDecl ('UTF-8');
    $w->addPrefix (xmpp_ns ('stream'), 'stream');
-   $w->addPrefix (xmpp_ns ('client'), '');
-   $w->forceNSDecl (xmpp_ns ('client'));
+   $w->addPrefix (xmpp_ns ($ns), '');
+   $w->forceNSDecl (xmpp_ns ($ns));
    $w->startTag (
       [xmpp_ns ('stream'), 'stream'],
       to => $domain,
       version => '1.0',
       [xmpp_ns ('xml'), 'lang'] => $language
    );
+   $self->flush;
+}
+
+=item B<send_handshake ($streamid, $secret)>
+
+This method sends a component handshake. Please note that C<$secret>
+must be XML escaped!
+
+=cut
+
+sub send_handshake {
+   my ($self, $id, $secret) = @_;
+   my $out_secret = encode ("UTF-8", $secret);
+   my $out = lc sha1_hex ($id . $out_secret);
+   simxml ($self->{writer}, defns => 'component', node => {
+      ns => 'component', name => 'handshake', childs => [ $out ]
+   });
    $self->flush;
 }
 
@@ -248,10 +280,25 @@ sub send_starttls {
 =item B<send_iq ($id, $type, $create_cb, %attrs)>
 
 This method sends an IQ stanza of type C<$type> (to be compliant
-only use: 'get', 'set', 'result' and 'error'). C<$create_cb>
-will be called with an XML::Writer instance as first argument.
-C<$create_cb> should be used to fill the IQ xml stanza.
+only use: 'get', 'set', 'result' and 'error').
+
+If C<$create_cb> is a code reference it will be called with an XML::Writer
+instance as first argument, which must be used to fill the IQ stanza.  If
+
+C<$create_cb> is a hash reference the hash will be used as key=>value arguments
+for the C<simxml> function defined in L<Net::XMPP2::Util>. C<simxml> will then
+be used to generate the contents of the IQ stanza. (This is very convenient
+when you want to write the contents of stanzas in the code and don't want to
+build a DOM tree yourself...).
+
 If C<$create_cb> is undefined an empty tag will be generated.
+
+Example:
+
+   $writer->send_iq ('newid', 'get', {
+      defns => 'version',
+      node  => { name => 'query', ns => 'version' }
+   }, to => 'jabber.org')
 
 C<%attrs> should have further attributes for the IQ stanza tag.
 For example 'to' or 'from'. If the C<%attrs> contain a 'lang' attribute
@@ -265,6 +312,7 @@ sub send_iq {
    my ($self, $id, $type, $create_cb, %attrs) = @_;
 
    $create_cb = _trans_create_cb ($create_cb);
+   $create_cb = $self->_fetch_cb_additions (send_iq_cb => $create_cb, $id, $type, \%attrs);
 
    my $w = $self->{writer};
    $w->addPrefix (xmpp_ns ('bind'), '');
@@ -352,10 +400,29 @@ sub _trans_create_cb {
    $cb
 }
 
+sub _fetch_cb_additions {
+   my ($self, $key, $create_cb, @args) = @_;
+   my @add_cbs;
+   my (@add_cbs) = $self->{$key}->(@args);
+   @add_cbs = map { _trans_create_cb ($_) } @add_cbs;
+
+   if (@add_cbs) {
+      my $crcb = $create_cb;
+      $create_cb = sub {
+         my (@args) = @_;
+         $crcb->(@args) if $crcb;
+         for (@add_cbs) { $_->(@args) }
+      }
+   }
+
+   $create_cb
+}
+
 sub send_presence {
    my ($self, $id, $type, $create_cb, %attrs) = @_;
 
    $create_cb = _trans_create_cb ($create_cb);
+   $create_cb = $self->_fetch_cb_additions (send_pres_cb => $create_cb, $id, $type, \%attrs);
 
    my $w = $self->{writer};
    $w->addPrefix (xmpp_ns ('client'), '');
@@ -426,6 +493,7 @@ sub send_message {
    my ($self, $id, $to, $type, $create_cb, %attrs) = @_;
 
    $create_cb = _trans_create_cb ($create_cb);
+   $create_cb = $self->_fetch_cb_additions (send_msg_cb => $create_cb, $id, $to, $type, \%attrs);
 
    my $w = $self->{writer};
    $w->addPrefix (xmpp_ns ('client'), '');
