@@ -30,7 +30,6 @@
       - weight handling!
    - in band registration and un-registration!!!
       - finish in-band-registration XEP
-      - document events
    later:
       - make dns resolution async!
 
@@ -46,6 +45,8 @@
    - think about: make seperate MUC handler class
 
 - Implement XEP-0190: Best Practice for Closing Idle Streams
+
+- Maybe implemente XEP-0146: Remote Controlling Clients
 
 - keep an eye on:
    - TLS: implemented, just do some extensive testing WRT blocking,
