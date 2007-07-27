@@ -1,5 +1,17 @@
 Revision history for Net-XMPP2
 
+0.05
+         - fixed destructor problem in disco
+         - disco extension now supports multiple identities
+         - added some unit tests!!!11
+         - improved error reporting a bit of internal exceptions
+         - fixed a bug where empty passwords didn't work
+         - typo bugfix in Net::XMPP2::Ext::Registration::submit_form
+         - lots of documentation bugfixes and also added some
+           more useful examples to the synopsises.
+         - fixed a bug with enabling and disabling multiple features
+           with enable_feature (as Ext::OOB does).
+
 0.04 Thu Jul 26 20:41:57 CEST 2007
          - actually added event send_stanza_data after documenting it
          - added samples/simple_register_example

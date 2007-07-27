@@ -17,10 +17,10 @@ Net::XMPP2::Ext::Disco - Service discovery manager class for XEP-0030
 
    my $con = Net::XMPP2::IM::Connection->new (...);
    $con->add_extension (my $disco = Net::XMPP2::Ext::Disco->new);
-   $disco->request_items ('romeo@montague.net',
+   $disco->request_items ($con, 'romeo@montague.net', undef,
       sub {
          my ($disco, $items, $error) = @_;
-         if ($error) { print "ERROR".$error->string."\n" }
+         if ($error) { print "ERROR:" . $error->string . "\n" }
          else {
             ... do something with the $items ...
          }
@@ -65,7 +65,7 @@ sub init {
    $self->enable_feature (xmpp_ns ('disco_info'));
    $self->enable_feature (xmpp_ns ('disco_items'));
 
-   $self->reg_cb (
+   $self->{cb_id} = $self->reg_cb (
       iq_get_request_xml => sub {
          my ($self, $con, $node) = @_;
 
@@ -81,16 +81,16 @@ sub init {
 =item B<set_identity ($category, $type, $name)>
 
 This sets the identity of the top info node.
-The default is: C<$category = "client">, C<$type = "console">
-and C<$name = "Net::XMPP2">.
 
-C<$name> is optional and can be undef.
+C<$name> is optional and can be undef.  Please note that C<$name> will
+overwrite all previous set names! If C<$name> is undefined then
+no previous set name is overwritten.
 
 For a list of valid identites look at:
 
    http://www.xmpp.org/registrar/disco-categories.html
 
-Valid identity types for C<$category = "client"> may be:
+Valid identity C<$type>s for C<$category = "client"> may be:
 
    bot
    console
@@ -103,11 +103,20 @@ Valid identity types for C<$category = "client"> may be:
 
 sub set_identity {
    my ($self, $category, $type, $name) = @_;
-   $self->{iden}->{cat}  = $category;
-   $self->{iden}->{type} = $type;
-   $self->{iden}->{name} = $name;
+   $self->{iden_name} = $name;
+   $self->{iden}->{$category}->{$type} = 1;
 }
 
+=item B<unset_identity ($category, $type)>
+
+This function removes the identity C<$category> and C<$type>.
+
+=cut
+
+sub unset_identity {
+   my ($self, $category, $type) = @_;
+   delete $self->{iden}->{$category}->{$type};
+}
 
 =item B<enable_feature ($uri)>
 
@@ -121,11 +130,13 @@ These features are enabled by default:
    http://jabber.org/protocol/disco#info
    http://jabber.org/protocol/disco#items
 
+You can pass also a list of features you want to enable to C<enable_feature>!
+
 =cut
 
 sub enable_feature {
-   my ($self, $feature) = @_;
-   $self->{feat}->{$feature} = 1
+   my ($self, @feature) = @_;
+   $self->{feat}->{$_} = 1 for @feature;
 }
 
 =item B<disable_feature ($uri)>
@@ -135,16 +146,13 @@ should be one of the values from the B<Name> column on:
 
    http://www.xmpp.org/registrar/disco-features.html
 
-These features are enabled by default:
-
-   http://jabber.org/protocol/disco#info
-   http://jabber.org/protocol/disco#items
+You can pass also a list of features you want to disable to C<disable_feature>!
 
 =cut
 
 sub disable_feature {
-   my ($self, $feature) = @_;
-   delete $self->{feat}->{$feature}
+   my ($self, @feature) = @_;
+   delete $self->{feat}->{$_} for @feature;
 }
 
 sub write_feature {
@@ -181,11 +189,13 @@ sub handle_disco_query {
             } else {
                $w->addPrefix (xmpp_ns ('disco_info'), '');
                $w->startTag ([xmpp_ns ('disco_info'), 'query']);
-                  $self->write_identity ($w,
-                     $self->{iden}->{cat},
-                     $self->{iden}->{type},
-                     $self->{iden}->{name},
-                  );
+                  for my $cat (keys %{$self->{iden}}) {
+                     for my $type (keys %{$self->{iden}->{$cat}}) {
+                        $self->write_identity ($w,
+                           $cat, $type, $self->{iden_name}
+                        );
+                     }
+                  }
                   for (sort grep { $self->{feat}->{$_} } keys %{$self->{feat}}) {
                      $self->write_feature ($w, $_);
                   }
@@ -227,7 +237,7 @@ sub handle_disco_query {
 
 sub DESTROY {
    my ($self) = @_;
-   $self->{connection}->unreg_cb ($self->{cb_id})
+   $self->unreg_cb ($self->{cb_id})
 }
 
 
@@ -292,7 +302,7 @@ the disco handle, an L<Net::XMPP2::Ext::Disco::Info> object (or undef)
 and an L<Net::XMPP2::Error::IQ> object when an error occured and no items
 were received.
 
-   $disco->request_info ('a@b.com', undef, sub {
+   $disco->request_info ($con, 'a@b.com', undef, sub {
       my ($disco, $info, $error) = @_;
       die $error->string if $error;
 
