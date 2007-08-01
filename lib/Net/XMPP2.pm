@@ -8,11 +8,11 @@ Net::XMPP2 - An implementation of the XMPP Protocol
 
 =head1 VERSION
 
-Version 0.05
+Version 0.06
 
 =cut
 
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
 =head1 SYNOPSIS
 
@@ -110,11 +110,48 @@ complicated the matter.
 
 =head1 RELEASE NOTES
 
-Here are some notes to the releases (release of this version is at top):
+Here are some notes to the last releases (release of this version is at top):
 
 =head2 Version
 
 =over 4
+
+=item * 0.06
+
+The event API has been changed a bit, it's possible to intercept events
+now, see L<Net::XMPP2::Event>.
+
+Implemented the old legacy XEP-0078 (IQ authentication), see also
+L<Net::XMPP2::Ext> for some notes about it.
+
+Some bugs with JID preps have been fixed and some functions for JID handling
+have been added to L<Net::XMPP2::Util>.
+
+Reworked the subscription system a bit, you know have to reply with 'subscribed'
+yourself, etc. (See also L<Net::XMPP2::IM::Connection> about subscriptions).
+
+Implemented following new XEPs:
+
+   - XEP-0082 - XMPP Date and Time Profiles
+   - XEP-0091 - Delayed Delivery (legacy)
+   - XEP-0092 - Software Version
+   - XEP-0203 - Delayed Delivery (new)
+
+For further information about them see L<Net::XMPP2::Ext>.
+
+I also started an implementation of XEP-0045 (Multi User Chats), please consult
+the test t/z_05_muc.t and the API at L<Net::XMPP2::Ext::MUC> for the already
+working features.  (Very basic MUCing should work, but there are lots of edges
+still with error reporting and all the other nice features).
+
+Also enhanced the message API a bit see L<Net::XMPP2::IM::Message> and the methods
+of other classes that generate messages (eg. like C<make_message>).
+
+There has been a considerable efford in test writing.  Added instructions about
+the test suite below in section L<TEST SUITE>.
+
+And another API change: C<reply_iq_result> and C<reply_iq_error> now attach a
+from attribute themselves (see L<Net::XMPP2::Connection>).
 
 =item * 0.05
 
@@ -159,31 +196,9 @@ L<Net::XMPP2::IM::Connection> now.
 Please consult the Changes file for greater detail about bugfixes and new
 features.
 
-=item * 0.02
+=item * older
 
-This release adds lots of small improvements to the API (mostly new events),
-and also some bugfixes here and there. The release also comes with some
-new examples, you might want to take a look at the L</EXAMPLES> section.
-
-As a highlight I also present the implementation of XEP-0004 (Data Forms), see also
-L<Net::XMPP2::Ext> for a description.
-
-I also added some convenience functions to L<Net::XMPP2::Util>, for example
-C<simxml> which simplifies the generation of XMPP-like "XML".
-
-=item * 0.01
-
-This release has beta status. The code is already used daily in my client
-and I keep looking out for bugs. If you find undocumented, missing or faulty
-code/methods please drop me a mail! See also L</BUGS> below.
-
-Potential edges when using this module: sparely documented methods, missing
-functionality and generally bugs bugs and bugs. Even though this module is in
-daily usage there are still lots of cases I might have missed.
-
-For the next release I'm planning to provide more examples in the documentation
-and/or samples/ directory, along with bugfixes and enhancements along with some
-todo items killed from the TODO file.
+For older release notes please have a look at the Changes file or CPAN.
 
 =back
 
@@ -191,6 +206,38 @@ todo items killed from the TODO file.
 
 There are still lots of items on the TODO list (see also the TODO file
 in the distribution of Net::XMPP2).
+
+=head1 TEST SUITE
+
+If you are a developer and want to test either a server or maybe just whether
+this module passes some basic tests you might want to run the developer test
+suite.
+
+This test suite is not enabled by default because it requires some human
+interaction to set it up, please see L<Net::XMPP2::TestClient> for hints about
+the setup procedure for the test suite.
+
+I wrote the test suite mostly because I wanted to make sure I didn't break
+something essential before a release. The tests don't cover everything and I
+don't plan to write a test for every single function in the API, that would
+slow down development considerably for me. But I hope that some grave show
+stopper bugs in releases are prevented with this test suite.
+
+The tests are also useful if you want to test a server implementation. But
+there are maybe of course conformance issues with L<Net::XMPP2> itself, so if
+you find something where L<Net::XMPP2> doesn't conform to the XMPP RFCs or XEPs
+consult the L<BUGS> section below.
+
+If you find a server that doesn't handle something correctly but you need to
+interact with it you are free to implement workarounds and send me a patch, or
+even ask me whether I might want to look into the issue (I can't gurantee
+anything here, but I want this module to be as interoperable as possible. But
+if the implementation of a workaround for some non-conformant software will
+complicate the code too much I'm probably not going to implement it.).
+
+Of course, if you find a bug in some server implementation don't forget to file
+a bugreport to them, one hack less in L<Net::XMPP2> means more time for bug
+fixing and improvements and new features.
 
 =head1 Why (yet) another XMPP module?
 
@@ -206,11 +253,11 @@ in Perl at the moment due the limited threading functionality they provide and
 the global speed hit. I also think that a simple event based I/O framework
 might be a bit easier to handle than threads.
 
-Another thing was that I didn't like the APIs of the other modules. In L<Net::XMPP2>
-I try to provide low level modules for speaking XMPP as defined in RFC 3920 and RFC 3921
-(see also L<Net::XMPP2::Connection> and L<Net::XMPP2::IM::Connection>). But I also
-try to provide a high level API for easier usage for instant messaging tasks
-and clients (eg. L<Net::XMPP2::Client>).
+Another thing was that I didn't like the APIs of the other modules. In
+L<Net::XMPP2> I try to provide low level modules for speaking XMPP as defined
+in RFC 3920 and RFC 3921 (see also L<Net::XMPP2::Connection> and
+L<Net::XMPP2::IM::Connection>). But I also try to provide a high level API for
+easier usage for instant messaging tasks and clients (eg. L<Net::XMPP2::Client>).
 
 =head1 A note about TLS
 

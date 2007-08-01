@@ -3,6 +3,10 @@ use strict;
 use overload
   '""' => "to_string";
 
+use Net::XMPP2::IM::Delayed;
+
+our @ISA = qw/Net::XMPP2::IM::Delayed/;
+
 =head1 NAME
 
 Net::XMPP2::IM::Message - Instant message
@@ -27,6 +31,9 @@ XML stuff that is happening under the hood.
 A L<Net::XMPP2::IM::Message> object overloads the stringification
 operation. The string represenation of this object is the return
 value of the C<any_body> method.
+
+L<Net::XMPP2::IM::Message> is derived from L<Net::XMPP2::IM::Delayed>,
+use the interface described there to find out whether this message was delayed.
 
 =head1 METHODS
 
@@ -111,6 +118,32 @@ sub new {
    $self
 }
 
+sub from_node {
+   my ($self, $node) = @_;
+
+   $self->fetch_delay_from_node ($node);
+
+   my $from     = $node->attr ('from');
+   my $to       = $node->attr ('to');
+   my $type     = $node->attr ('type');
+   my ($thread) = $node->find_all ([qw/client thread/]);
+
+   my %bodies;
+   my %subjects;
+
+   $bodies{$_->attr ('lang') || ''} = $_->text
+      for $node->find_all ([qw/client body/]);
+   $subjects{$_->attr ('lang') || ''} = $_->text
+      for $node->find_all ([qw/client subject/]);
+
+   $self->{from}     = $from;
+   $self->{to}       = $to;
+   $self->{type}     = $type;
+   $self->{thread}   = $thread;
+   $self->{bodies}   = \%bodies;
+   $self->{subjects} = \%subjects;
+}
+
 sub to_string {
    my ($self) = @_;
    $self->any_body
@@ -160,7 +193,7 @@ sub make_reply {
    my ($self, $msg) = @_;
 
    unless ($msg) {
-      $msg = Net::XMPP2::IM::Message->new ();
+      $msg = $self->new ();
    }
 
    $msg->{connection} = $self->{connection};

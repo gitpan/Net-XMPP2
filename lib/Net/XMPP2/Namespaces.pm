@@ -17,6 +17,7 @@ our %NAMESPACES = (
    roster      => 'jabber:iq:roster',
    register    => 'jabber:iq:register',
    version     => 'jabber:iq:version',
+   auth        => 'jabber:iq:auth',
    session     => 'urn:ietf:params:xml:ns:xmpp-session',
    xml         => 'http://www.w3.org/XML/1998/namespace',
    disco_info  => 'http://jabber.org/protocol/disco#info',
@@ -30,6 +31,8 @@ our %NAMESPACES = (
    muc_user    => 'http://jabber.org/protocol/muc#user',
    muc_owner   => 'http://jabber.org/protocol/muc#owner',
    search      => 'jabber:iq:search',
+   x_delay     => 'jabber:x:delay',
+   delay       => 'urn:xmpp:delay',
 );
 
 =head1 NAME
@@ -66,6 +69,7 @@ which make handling of namepsaces a bit easier:
    client  => jabber:client
    roster  => jabber:iq:roster
    version => jabber:iq:version
+   auth    => jabber:iq:auth
 
    iq_oob  => jabber:iq:oob
    x_oob   => jabber:x:oob

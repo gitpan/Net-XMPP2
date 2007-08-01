@@ -1,5 +1,6 @@
 package Net::XMPP2::IM::Connection;
 use strict;
+no warnings;
 use Net::XMPP2::Connection;
 use Net::XMPP2::Namespaces qw/xmpp_ns/;
 use Net::XMPP2::IM::Roster;
@@ -136,7 +137,7 @@ sub init_connection {
 
    } else {
       $self->retrieve_roster (sub {
-         $self->initial_presence;
+         $self->initial_presence; # XXX: is this the right order? after roster fetch?
          $self->{session_active} = 1;
          $self->event ('session_ready');
       });
@@ -233,30 +234,8 @@ sub handle_message {
       return if $error->type ne 'continue';
    }
 
-   my $from     = $node->attr ('from');
-   my $to       = $node->attr ('to');
-   my $type     = $node->attr ('type');
-   my ($thread) = $node->find_all ([qw/client thread/]);
-
-   my %bodies;
-   my %subjects;
-
-   $bodies{$_->attr ('lang') || ''} = $_->text
-      for $node->find_all ([qw/client body/]);
-   $subjects{$_->attr ('lang') || ''} = $_->text
-      for $node->find_all ([qw/client subject/]);
-
-   my $msg =
-      Net::XMPP2::IM::Message->new (
-         connection => $self,
-         from       => $from,
-         to         => $to,
-         type       => $type,
-         bodies     => \%bodies,
-         subjects   => \%subjects,
-         thread     => $thread
-      );
-
+   my $msg = Net::XMPP2::IM::Message->new (connection => $self);
+   $msg->from_node ($node);
    $self->event (message => $msg);
 }
 
@@ -333,33 +312,31 @@ C<$error> will be an L<Net::XMPP2::Error::Message> error object.
 This event is generated when the C<$contact> wants to subscribe
 to your presence.
 
-If any of the event callbacks for this event return a true value then the
-subscription request is accepted and a subscribed presence is sent.  If all
-callbacks return a false value the subscription request is cancelled.  If none
-of the callbacks return anything (all return an empty list) nothing of the
-former two things are done.
-
-If you want to accept or decline the request later, call
+If you want to accept or decline the request, call
 C<send_subscribed> method of L<Net::XMPP2::IM::Contact> or
 C<send_unsubscribed> method of L<Net::XMPP2::IM::Contact> on C<$contact>.
+
+If you want to start a mutual subscription you have to call C<send_subscribe>
+B<AFTER> you accepted or declined with C<send_subscribed>/C<send_unsubscribed>.
+Calling it in the opposite order gets some servers confused!
 
 =item contact_subscribed => $roster, $contact
 
 This event is generated when C<$contact> subscribed to your presence successfully.
 
-=item contact_did_unsubscribe => $roster, $contact, $rdoit
+=item contact_did_unsubscribe => $roster, $contact
 
 This event is generated when C<$contact> unsubscribes from your presence.
 
-Returning a true value from any event callback will also unsubscribe you from
-the presence of the contact.
-
-If you want to unsubscribe later from him call the C<send_unsubscribed> method
+If you want to unsubscribe from him call the C<send_unsubscribe> method
 of L<Net::XMPP2::IM::Contact> on C<$contact>.
 
 =item contact_unsubscribed => $roster, $contact
 
 This event is generated when C<$contact> unsubscribed you from his presence.
+
+If you want to unsubscribe him from your presence call the C<send_unsubscribed>
+method of L<Net::XMPP2::IM::Contact> on C<$contact>.
 
 =back
 

@@ -24,6 +24,38 @@ variable C<NET_XMPP2_TEST> to something like this:
 Most tests will try to connect two accounts, so please take a server
 that allows two connections from the same IP.
 
+If you also want to run the MUC tests (see L<Net::XMPP2::Ext::MUC>)
+you also need to setup the environment variable C<NET_XMPP2_TEST_MUC>
+to contain the domain of a MUC service:
+
+   NET_XMPP2_TEST_MUC="conference.your_xmpp_server.tld"
+
+If you see some tests fail and want to know more about the protocol flow
+you can enable the protocol debugging output by setting C<NET_XMPP2_TEST_DEBUG>
+to '1':
+
+   NET_XMPP2_TEST_DEBUG=1
+
+(NOTE: You will only see the output of this by running a single test)
+
+=head1 CLEANING UP
+
+If the tests went wrong somewhere or you interrupted the tests you might
+want to delete the accounts from the server manually, then run:
+
+   perl t/z_*_unregister.t
+
+=head1 MANUAL TESTING
+
+If you just want to run a single test yourself, just execute the register
+test before doing so:
+
+   perl t/z_00_register.t
+
+And then you could eg. run:
+
+   perl t/z_03_iq_auth.t
+
 =head1 METHODS
 
 =head2 new (%args)
@@ -49,8 +81,10 @@ sub new_or_exit {
       $self->{debug} = 1;
    }
 
+   $self->{tests};
+
    if ($ENV{NET_XMPP2_TEST}) {
-      plan tests => $self->{tests} + 1;
+      plan tests => $self->{tests} + 1
    } else {
       plan skip_all => "environment var NET_XMPP2_TEST not set! (see also Net::XMPP2::TestClient)!";
       exit;
@@ -76,10 +110,10 @@ sub init {
 
    $self->{jid} = $jid;
    $self->{password} = $password;
-   $cl->add_account ($jid, $password);
+   $cl->add_account ($jid, $password, undef, undef, $self->{connection_args});
 
    if ($self->{two_accounts}) {
-      $cl->add_account ("2nd_".$jid, $password);
+      $cl->add_account ("2nd_".$jid, $password, undef, undef, $self->{connection_args});
       $self->{connected_accounts} = {};
 
       $cl->reg_cb (session_ready => sub {
@@ -105,6 +139,8 @@ sub init {
 sub main_account { ($_[0]->{jid}, $_[0]->{password}) }
 
 sub client { $_[0]->{client} }
+
+sub tests { $_[0]->{tests} }
 
 sub instance_ext {
    my ($self, $ext, @args) = @_;

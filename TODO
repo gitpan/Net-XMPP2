@@ -1,62 +1,124 @@
-- see also: grep 'XXX\|FIXME\|TODO' * -r
-  - lib/Net/XMPP2/Writer.pm: # XXX: removed authname, because it
-                                    ensures maximum connectivitiy
-- test enable_feature by time
+'x' means: is done!
 
+- Implement XEP-0045: Multi-User Chat
+   x store full jid info on entering room
+   x implement delayed delivery for messages
+      x WRITE TEST!
+      - to mark history of room
+   x 7.8 Sending a Private Message
+   x 7.9 Sending a Message to All Occupants
+     - vissitor error (when room not allow without voice to chat)
+   - improve room info handler class to retrieve interesting information eaasier
+      - room occupant query
+   - implement status code mappings
+      - that room logged
+      - non anonymous
+   - look over error reporting (more conclusive errors!)
+      - change presenceerror to something more clear
+      - entering members only
+      - banned
+      - nickname conflict
+         - with resolution
+      - max users
+      - locked
+      - 11. Error and Status Codes
+         - 11.1 Error Codes
+         - 11.2 Status Codes
+   - entering password protected rooms
+   - managing of discussion history when entering
+      - maxchars, maxstanzas, seconds, since
+   - nickname changes
+      - make own possible
+      - log changes of other people nicknames
+      - according errors
+   - test changing of presence of a user
+   - invitations
+   - 7.6 Converting a One-to-One Chat Into a Conference
+   - 7.7 Occupant Modification of the Room Subject
+   - 7.10 Registering with a Room
+   - 7.11 Discovering Reserved Room Nickname
+   - 7.12 Requesting Voice
+   - 8. Moderator Use Cases
+      - 8.1 Modifying the Room Subject
+      - 8.2 Kicking an Occupant
+      - 8.3 Granting Voice to a Visitor
+      - 8.4 Revoking Voice from a Participant
+      - 8.5 Modifying the Voice List
+      - 8.6 Approving Voice Requests
+   - 9. Admin Use Cases
+      - 9.1 Banning a User
+      - 9.2 Modifying the Ban List
+      - 9.3 Granting Membership
+      - 9.4 Revoking Membership
+      - 9.5 Modifying the Member List
+      - 9.6 Granting Moderator Privileges
+      - 9.7 Revoking Moderator Privileges
+      - 9.8 Modifying the Moderator List
+      - 9.9 Approving Registration Requests
+   - 10. Owner Use Cases
+      - 10.1.1 General Considerations
+      - 10.1.2 Creating an Instant Room
+      - 10.1.3 Creating a Reserved Room
+      - 10.1.4 Requesting a Unique Room Name
+      - 10.2 Subsequent Room Configuration
+      - 10.2.1 Notification of Configuration Changes
+      - 10.3 Granting Ownership Privileges
+      - 10.4 Revoking Ownership Privileges
+      - 10.5 Modifying the Owner List
+      - 10.6 Granting Administrative Privileges
+      - 10.7 Revoking Administrative Privileges
+      - 10.8 Modifying the Admin List
+      - 10.9 Destroying a Room
+
+- read into SSL and improve the SSL/TLS handling
+- make more tests
+   - oob
+   - data forms
+   - jabber component
+- fix the inaviodable memoryleaks with the callbacks
+  the circular object structs.
+- allow the inclusion of custom (raw) XML into Net::XMPP2::IM::Messages!
+   - eg. by attaching usual $create_cb callbacks which can also be
+     simxml nodes. (sub { $_[0]->raw ("...") } then also works.)
+- put some serious stuff in the synopsises
+- test enable_feature by time
 - look at attribute namespace preservation! (if they got
   prefixes, how to parse this with expat?
   see also http://www.w3.org/TR/REC-xml-names/#scoping-defaulting )
-
-- put some serious stuff in the synopsises
-
-- implement iq-auth!!!!
-
 - fix problem that xml::writer writes after <stream/> ahs been written
   - reproduce by conflicting resources!
-
 - test the xml parse error object somehow!
-
 - add context field to IQ error for all the places origin from IQ errors
   (bind_error, session_error, ...)
-
 - Net::XMPP2::Client
   - find a way to distinguish presences from JIDs that
     are in multiple account's roster.
-
 - Net::XMPP2 missing functionality to be RFC 3920 conform:
-   - improve error handling for SASL to 
+   - improve error handling for SASL to
      support retries as specified in RFC 3920.
      (eg. by supporting a method sasl_retry() which takes
       the changed credentials)
-   - SRV record lookup
+   x SRV record lookup
       - weight handling!
-   - in band registration and un-registration!!!
-      - finish in-band-registration XEP
-   later:
-      - make dns resolution async!
-
 - Net::XMPP2::IM missing functionality to be RFC 3921 conform:
    - 7.2.  Business Rules
-
-- Implement XEP-0082: XMPP Date and Time Profiles
-   - util functions to convert them to unix timestamps
-
 - Implement XEP-0115: Entity Capabilities
-
-- Implement XEP-0045: Multi-User Chat
-   - think about: make seperate MUC handler class
-
 - Implement XEP-0190: Best Practice for Closing Idle Streams
+x Implement XEP-0030: Service Discovery
+   - see also: XEP-0128: Service Discovery Extensions
+   - missing feature: building up a item tree for discovery
+- see also: grep 'XXX\|FIXME\|TODO' * -r
+  - lib/Net/XMPP2/Writer.pm: # XXX: removed authname, because it
+                                    ensures maximum connectivitiy
+long term?
+==========
 
-- Maybe implemente XEP-0146: Remote Controlling Clients
-
-- keep an eye on:
+x Implement XEP-0082: XMPP Date and Time Profiles
+   - provide maybe _to functions for the old format,
+     it's still in use out there
+- make dns resolution async!
+- Maybe implement XEP-0146: Remote Controlling Clients
+x keep an eye on:
    - TLS: implemented, just do some extensive testing WRT blocking,
           i don't trust the current way the watchers are handled,
           i'm in fear of deadlocks...
-
-- Implement XEP-0030: Service Discovery
-   - see also: XEP-0128: Service Discovery Extensions
-   - missing feature: building up a item tree for discovery
-   - defining multiple 'personalities' in the Disco module
-     for eg. handling discos to components and such.
