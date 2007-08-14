@@ -164,7 +164,7 @@ sub send_init_stream {
    $ns ||= 'client';
 
    my $w = $self->{writer};
-   $w->xmlDecl ('UTF-8');
+   # $w->xmlDecl ('UTF-8'); # no, we don't do this, because server knows this already
    $w->addPrefix (xmpp_ns ('stream'), 'stream');
    $w->addPrefix (xmpp_ns ($ns), '');
    $w->forceNSDecl (xmpp_ns ($ns));
@@ -174,6 +174,18 @@ sub send_init_stream {
       version => '1.0',
       [xmpp_ns ('xml'), 'lang'] => $language
    );
+   $self->flush;
+}
+
+=item B<send_whitespace_ping>
+
+This method sends a single space to the server.
+
+=cut
+
+sub send_whitespace_ping {
+   my ($self) = @_;
+   $self->{writer}->raw (' ');
    $self->flush;
 }
 

@@ -84,6 +84,8 @@ sub connect {
    $self->{socket} = $sock;
    $self->{host}   = $host;
    $self->{port}   = $port;
+   delete $self->{read_buffer};
+   delete $self->{write_buffer};
 
    $self->set_noblock;
 
@@ -116,6 +118,8 @@ sub end_sockets {
    my ($self) = @_;
    delete $self->{r};
    delete $self->{w};
+   delete $self->{read_buffer};
+   delete $self->{write_buffer};
    if (delete $self->{ssl_enabled}) {
       Net::SSLeay::free ($self->{ssl});
       delete $self->{ssl};
@@ -150,7 +154,7 @@ sub try_ssl_write {
 
             $self->disconnect (
                sprintf (
-                  "Error while writing from server '$self->{host}:$self->{port}': (%d|%s|%s)",
+                  "Error while writing to server '$self->{host}:$self->{port}': (%d|%s|%s)",
                $err2, (Net::SSLeay::ERR_error_string $err), "$!")
             );
             return;

@@ -8,11 +8,11 @@ Net::XMPP2 - An implementation of the XMPP Protocol
 
 =head1 VERSION
 
-Version 0.06
+Version 0.07
 
 =cut
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 =head1 SYNOPSIS
 
@@ -97,7 +97,7 @@ For SRV RR lookups.
 
 =item L<Digest::SHA1>
 
-For component authentication.
+For component authentication and old-style authentication.
 
 =back
 
@@ -116,6 +116,15 @@ Here are some notes to the last releases (release of this version is at top):
 
 =over 4
 
+=item * 0.07
+
+Many small changes in L<Net::XMPP2::Event>. Implemented XEP-0199 (XMPP Ping)
+and also whitespace pings in L<Net::XMPP2::Connection>.
+
+Also fixed some bugs.
+
+For further details look in the C<Changes> file.
+
 =item * 0.06
 
 The event API has been changed a bit, it's possible to intercept events
@@ -127,7 +136,7 @@ L<Net::XMPP2::Ext> for some notes about it.
 Some bugs with JID preps have been fixed and some functions for JID handling
 have been added to L<Net::XMPP2::Util>.
 
-Reworked the subscription system a bit, you know have to reply with 'subscribed'
+Reworked the subscription system a bit, you now have to reply with 'subscribed'
 yourself, etc. (See also L<Net::XMPP2::IM::Connection> about subscriptions).
 
 Implemented following new XEPs:
@@ -172,29 +181,6 @@ While implementing in band registration I implemented XEP-0066: Out of Band Data
 You can now receive and send URLs from and to others. See also L<Net::XMPP2::Ext::OOB>.
 
 I also fixed some bugs in L<Net::XMPP2::Ext::Disco>.
-
-=item * 0.03
-
-This release adds new events for attaching information to "XML" stanzas that
-are in transmission to the server. See also the events C<send_*_hook> in
-L<Net::XMPP2::Connection>.
-
-The event callbacks als don't have to return a true value anymore. What the
-return values do depends on the event now.
-
-The highlight of this release is the implementation of XEP-0114, the Jabber
-Component Protocol.
-
-It's possible to get a DOM tree from a L<Net::XMPP2::Node> now and also to
-receive the original parsed "XML" from it, which should enable full access to
-the "XML" data that was received. This also allows easy integration with other
-XML Perl modules.
-
-You can also set the initial priority of the presence in
-L<Net::XMPP2::IM::Connection> now.
-
-Please consult the Changes file for greater detail about bugfixes and new
-features.
 
 =item * older
 

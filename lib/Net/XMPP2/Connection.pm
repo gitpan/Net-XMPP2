@@ -133,6 +133,12 @@ This enables the anal iq auth mechanism that will first look in the stream
 features before trying to start iq authentication. Yes, servers don't always
 advertise what they can. I only implemented this option for my test suite.
 
+=item whitespace_ping_interval => $interval
+
+This will set the whitespace ping interval (in seconds). The default interval
+are 60 seconds.  You can disable the whitespace ping by setting C<$interval> to
+0.
+
 =back
 
 =cut
@@ -144,6 +150,7 @@ sub new {
       $class->SUPER::new (
          language         => 'en',
          stream_namespace => 'client',
+         whitespace_ping_interval => 60,
          @_
       );
 
@@ -169,10 +176,12 @@ sub new {
    });
    $self->{parser}->set_error_cb (sub {
       my ($ex, $data, $type) = @_;
+
       if ($type eq 'xml') {
          my $pe = Net::XMPP2::Error::Parser->new (exception => $_[0], data => $_[1]);
          $self->event (xml_parser_error => $pe);
          $self->disconnect ("xml error: $_[0], $_[1]");
+
       } else {
          my $pe = Net::XMPP2::Error->new (
             text => "uncaught exception in stanza handling: $ex"
@@ -230,6 +239,16 @@ sub new {
          );
       },
    );
+
+   if ($self->{whitespace_ping_interval} > 0) {
+      $self->reg_cb (
+         stream_ready => sub {
+            my ($self) = @_;
+            $self->_start_whitespace_ping;
+            $self->unreg_me;
+         }
+      );
+   }
 
    $self->set_exception_cb (sub {
       my ($ex) = @_;
@@ -353,7 +372,9 @@ sub handle_stanza {
       return;
    }
 
-   $self->event (recv_stanza_xml => $node);
+   my (@res) = $self->event (recv_stanza_xml => $node);
+   @res = grep $_, @res;
+   return if @res;
 
    if ($node->eq (stream => 'features')) {
       $self->event (stream_features => $node);
@@ -476,6 +497,16 @@ sub send_iq {
 
    $self->{writer}->send_iq ($id, $type, $create_cb, %attrs);
    $id
+}
+
+=item B<next_iq_id>
+
+This method returns the next IQ id that will be used.
+
+=cut
+
+sub next_iq_id {
+   $_[0]->{iq_id};
 }
 
 =item B<reply_iq_result ($req_iq_node, $create_cb, %attrs)>
@@ -854,6 +885,19 @@ sub do_rebind {
 }
 
 
+sub _start_whitespace_ping {
+   my ($self) = @_;
+
+   return unless $self->{whitespace_ping_interval} > 0;
+
+   $self->{_ws_ping} =
+      AnyEvent->timer (after => $self->{whitespace_ping_interval}, cb => sub {
+         $self->{writer}->send_whitespace_ping;
+         $self->_start_whitespace_ping;
+      });
+}
+
+
 =item B<jid>
 
 After the stream has been bound to a resource the JID can be retrieved via this
@@ -987,6 +1031,11 @@ C<$node> is the node of the stanza that is being processed, it's of
 type L<Net::XMPP2::Node>.
 
 This method might not be as handy for debuggin purposes as C<debug_recv>.
+
+If you want to handle the stanza yourself and don't want this module
+to take care of it return a true value from your registered callback.
+
+If any of the event callbacks return a true value this stanza will be ignored.
 
 =item send_stanza_data => $data
 
