@@ -4,7 +4,7 @@ use XML::Writer;
 use Authen::SASL qw/Perl/;
 use MIME::Base64;
 use Net::XMPP2::Namespaces qw/xmpp_ns/;
-use Net::XMPP2::Util qw/simxml/;
+use Net::XMPP2::Util qw/simxml filter_xml_chars filter_xml_attr_hash_chars/;
 use Digest::SHA1 qw/sha1_hex/;
 use Encode;
 
@@ -321,6 +321,9 @@ an undef it will be omitted.
 
 C<$id> is the id to give this IQ stanza and is mandatory in this API.
 
+Please note that all attribute values and character data will be filtered
+by C<filter_xml_chars> (see also L<Net::XMPP2::Util>).
+
 =cut
 
 sub send_iq {
@@ -329,8 +332,6 @@ sub send_iq {
    $create_cb = _trans_create_cb ($create_cb);
    $create_cb = $self->_fetch_cb_additions (send_iq_cb => $create_cb, $id, $type, \%attrs);
 
-   my $w = $self->{writer};
-   $w->addPrefix (xmpp_ns ('bind'), '');
    my (@from) = ($self->{jid} ? (from => $self->{jid}) : ());
    if ($attrs{lang}) {
       push @from, ([ xmpp_ns ('xml'), 'lang' ] => delete $attrs{leng})
@@ -340,13 +341,19 @@ sub send_iq {
       delete $attrs{to};
    }
 
-   push @from, (id => $id) if defined $id;
+   push @from, (id => filter_xml_chars $id) if defined $id;
+
+   filter_xml_attr_hash_chars \%attrs;
+
+   my $w = $self->{writer};
+   $w->addPrefix (xmpp_ns ('client'), '');
+
    if (defined $create_cb) {
-      $w->startTag ('iq', type => $type, @from, %attrs);
+      $w->startTag ([xmpp_ns ('client'), 'iq'], type => $type, @from, %attrs);
       $create_cb->($w);
       $w->endTag;
    } else {
-      $w->emptyTag ('iq', type => $type, @from, %attrs);
+      $w->emptyTag ([xmpp_ns ('client'), 'iq'], type => $type, @from, %attrs);
    }
    $self->flush;
 }
@@ -383,12 +390,15 @@ with the value as content, which must be a number between -128 and +127.
 Note: If C<$create_cb> is undefined and one of the above attributes (show,
 status or priority) were given, the generates presence tag won't be empty.
 
+Please note that all attribute values and character data will be filtered
+by C<filter_xml_chars> (see also L<Net::XMPP2::Util>).
+
 =cut
 
 sub _generate_key_xml {
    my ($w, $key, $value) = @_;
    $w->startTag ($key);
-   $w->characters ($value);
+   $w->characters (filter_xml_chars $value);
    $w->endTag;
 }
 
@@ -397,12 +407,12 @@ sub _generate_key_xmls {
    if (ref ($value) eq 'HASH') {
       for (keys %$value) {
          $w->startTag ($key, ($_ ne '' ? ([xmpp_ns ('xml'), 'lang'] => $_) : ()));
-         $w->characters ($value->{$_});
+         $w->characters (filter_xml_chars $value->{$_});
          $w->endTag;
       }
    } else {
       $w->startTag ($key);
-      $w->characters ($value);
+      $w->characters (filter_xml_chars $value);
       $w->endTag;
    }
 }
@@ -455,8 +465,10 @@ sub send_presence {
          grep { my $k = $_; not grep { $k eq $_ } qw/show priority status/ }
             keys %attrs;
 
+   filter_xml_attr_hash_chars \%fattrs;
+
    if (defined $create_cb) {
-      $w->startTag ('presence', @add, %fattrs);
+      $w->startTag ([xmpp_ns ('client'), 'presence'], @add, %fattrs);
       _generate_key_xml ($w, show => $attrs{show})         if defined $attrs{show};
       _generate_key_xml ($w, priority => $attrs{priority}) if defined $attrs{priority};
       _generate_key_xmls ($w, status => $attrs{status})    if defined $attrs{status};
@@ -464,13 +476,13 @@ sub send_presence {
       $w->endTag;
    } else {
       if (exists $attrs{show} or $attrs{priority} or $attrs{status}) {
-         $w->startTag ('presence', @add, %fattrs);
+         $w->startTag ([xmpp_ns ('client'), 'presence'], @add, %fattrs);
          _generate_key_xml ($w, show => $attrs{show})         if defined $attrs{show};
          _generate_key_xml ($w, priority => $attrs{priority}) if defined $attrs{priority};
          _generate_key_xmls ($w, status => $attrs{status})    if defined $attrs{status};
          $w->endTag;
       } else {
-         $w->emptyTag ('presence', @add, %fattrs);
+         $w->emptyTag ([xmpp_ns ('client'), 'presence'], @add, %fattrs);
       }
    }
 
@@ -506,6 +518,9 @@ will be generated for it. The values will be the character content of the subjec
 If C<%attrs> contains a 'thread' key: a child xml tag with that name will be generated
 and the value will be the character content.
 
+Please note that all attribute values and character data will be filtered
+by C<filter_xml_chars> (see also L<Net::XMPP2::Util>).
+
 =cut
 
 sub send_message {
@@ -528,7 +543,7 @@ sub send_message {
             keys %attrs;
 
    if (defined $create_cb) {
-      $w->startTag ('message', @add, to => $to, type => $type, %fattrs);
+      $w->startTag ([xmpp_ns ('client'), 'message'], @add, to => $to, type => $type, %fattrs);
       _generate_key_xmls ($w, subject => $attrs{subject})    if defined $attrs{subject};
       _generate_key_xmls ($w, body => $attrs{body})          if defined $attrs{body};
       _generate_key_xml ($w, thread => $attrs{thread})       if defined $attrs{thread};
@@ -536,13 +551,13 @@ sub send_message {
       $w->endTag;
    } else {
       if (exists $attrs{subject} or $attrs{body} or $attrs{thread}) {
-         $w->startTag ('message', @add, to => $to, type => $type, %fattrs);
+         $w->startTag ([xmpp_ns ('client'), 'message'], @add, to => $to, type => $type, %fattrs);
          _generate_key_xmls ($w, subject => $attrs{subject})    if defined $attrs{subject};
          _generate_key_xmls ($w, body => $attrs{body})          if defined $attrs{body};
          _generate_key_xml ($w, thread => $attrs{thread})       if defined $attrs{thread};
          $w->endTag;
       } else {
-         $w->emptyTag ('message', @add, to => $to, type => $type, %fattrs);
+         $w->emptyTag ([xmpp_ns ('client'), 'message'], @add, to => $to, type => $type, %fattrs);
       }
    }
 
@@ -610,10 +625,13 @@ sub write_error_tag {
 
    push @add, (code => $STANZA_ERRORS{$error}->[1]);
 
+   my %add = @add;
+   filter_xml_attr_hash_chars \%add;
+
    $w->addPrefix (xmpp_ns ('client'), '');
-   $w->startTag ([xmpp_ns ('client') => 'error'], type => $type, @add);
+   $w->startTag ([xmpp_ns ('client') => 'error'], type => $type, %add);
       $w->addPrefix (xmpp_ns ('stanzas'), '');
-      $w->emptyTag ([xmpp_ns ('stanzas') => $error]);
+      $w->emptyTag ([xmpp_ns ('stanzas') => filter_xml_chars $error]);
    $w->endTag;
 }
 

@@ -8,11 +8,11 @@ Net::XMPP2 - An implementation of the XMPP Protocol
 
 =head1 VERSION
 
-Version 0.07
+Version 0.08
 
 =cut
 
-our $VERSION = '0.07';
+our $VERSION = '0.08';
 
 =head1 SYNOPSIS
 
@@ -115,6 +115,16 @@ Here are some notes to the last releases (release of this version is at top):
 =head2 Version
 
 =over 4
+
+=item * 0.08
+
+Lots of bugfixes and minor changes you might want to read about in the C<Changes>
+file. Added some examples which might be useful.
+
+Introduced a character filter on the low XML writer level which will filter out
+not allowed XML characters to prevent unexpected disconnects. Arguably this is the
+programmers fault but I hope noone is confuses if this module tries everything to
+be as reliable as possible.
 
 =item * 0.07
 
@@ -334,6 +344,24 @@ someone who sends the bot a 'send <filename>' message.
 This is a example script which allows you to register, unregister and change
 your password for accounts. Execute it without arguments for more details.
 
+=item B<samples/disco_info>
+
+This is a small example tool that allows you to fetch the software version,
+disco info and disco items information about a JID.
+
+=item B<samples/talkbot>
+
+This is a simple bot that will read lines from a file and recite them
+when you send it a message. It will also automatically allow you to subscribe
+to it. Start it without commandline arguments to be informed about the usage.
+
+=item B<samples/retrieve_roster>
+
+This is a simple example script that will retrieve the roster
+for an account and print it to stdout. You start it like this:
+
+   samples/# ./retrieve_roster <jid> <password>
+
 =back
 
 For others, which the author might forgot or didn't want to
@@ -386,7 +414,7 @@ You can also look for information at:
 
 =item * Net::XMPP2 Project Site
 
-L<http://www.ta-sa.org/>
+L<http://www.ta-sa.org/net_xmpp2>
 
 =item * AnnoCPAN: Annotated CPAN documentation
 
