@@ -2,7 +2,7 @@ NAME
     Net::XMPP2 - An implementation of the XMPP Protocol
 
 VERSION
-    Version 0.08
+    Version 0.09
 
 SYNOPSIS
        use Net::XMPP2::Connection;
@@ -89,6 +89,10 @@ RELEASE NOTES
     top):
 
   Version
+    * 0.09
+        Just a bugfix release. Last change before the last release
+        introduced a bug with namespace handling in resource binding.
+
     * 0.08
         Lots of bugfixes and minor changes you might want to read about in
         the "Changes" file. Added some examples which might be useful.

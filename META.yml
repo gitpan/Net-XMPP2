@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:                Net-XMPP2
-version:             0.08
+version:             0.09
 abstract:            An implementation of the XMPP Protocol
 license:             perl
 generated_by:        ExtUtils::MakeMaker version 6.32
