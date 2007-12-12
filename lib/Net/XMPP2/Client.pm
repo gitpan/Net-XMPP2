@@ -2,7 +2,7 @@ package Net::XMPP2::Client;
 use strict;
 use AnyEvent;
 use Net::XMPP2::IM::Connection;
-use Net::XMPP2::Util qw/stringprep_jid prep_bare_jid dump_twig_xml/;
+use Net::XMPP2::Util qw/stringprep_jid prep_bare_jid dump_twig_xml bare_jid/;
 use Net::XMPP2::Namespaces qw/xmpp_ns/;
 use Net::XMPP2::Event;
 use Net::XMPP2::Extendable;
@@ -158,7 +158,7 @@ sub update_connections {
    my ($self) = @_;
 
    for my $acc (values %{$self->{accounts}}) {
-      unless ($acc->is_connected) {
+      if (!$acc->is_connected && !$self->{prep_connections}->{$acc->bare_jid}) {
          my %args = (initial_presence => 10);
 
          if (defined $self->{presence}) {
@@ -168,6 +168,7 @@ sub update_connections {
          }
 
          my $con = $acc->spawn_connection (%args);
+         $self->{prep_connections}->{$acc->bare_jid} = $con;
 
          $con->add_forward ($self, sub {
             my ($con, $self, $ev, @arg) = @_;
@@ -177,6 +178,7 @@ sub update_connections {
          $con->reg_cb (
             session_ready => sub {
                my ($con) = @_;
+               delete $self->{prep_connections}->{$acc->bare_jid};
                $self->event (connected => $acc);
                if (defined $self->{presence}) {
                   $con->send_presence (undef, undef, %{$self->{presence} || {}});
@@ -185,6 +187,7 @@ sub update_connections {
             },
             disconnect => sub {
                delete $self->{accounts}->{$acc};
+               delete $self->{prep_connections}->{$acc->bare_jid};
                $_[0]->unreg_me
             }
          );
@@ -247,6 +250,10 @@ C<$msg> can either be a string or a L<Net::XMPP2::IM::Message> object.
 If C<$msg> is such an object C<$dest_jid> is optional, but will, when
 passed, override the destination of the message.
 
+NOTE: C<$dest_jid> is transformed into a bare JID and the routing
+is done by the conversation tracking mechanism which keeps track of
+which resource should get the message.
+
 C<$src> is optional. It specifies which account to use
 to send the message. If it is not passed L<Net::XMPP2::Client> will try
 to find an account itself. First it will look through all rosters
@@ -293,7 +300,7 @@ sub send_message {
       die "send_message: Couldn't get connected account for sending"
    }
 
-   $msg->send ($srcacc->connection)
+   $srcacc->send_tracked_message ($msg);
 }
 
 =head2 get_account ($jid)

@@ -1,5 +1,20 @@
 Revision history for Net-XMPP2
 
+0.10 Wed Dec 12 15:38:58 CET 2007
+         - implemented conversation/chat session tracking,
+           see Net::XMPP2::Client::send_message and
+           Net::XMPP2::IM::Account::send_tracked_message.
+         - fixed a race condition with the account adding routine
+           of Net::XMPP2::Client.
+         - also fixed a small bug in stream initiation, Net::XMPP2 now
+           sends a xml declaration again.
+         - implemented a very old authentication method which makes Net::XMPP2
+           now also work with jabberd 1.4.2. See also the
+           'disable_old_jabber_authentication' option in Net::XMPP2::Connection
+         - fixed cpan bug #29724 (unpacking the tarball on os x works now
+           after renaming devcl -> dev_client).
+         - fixed a bug with handling the is_room query in MUC
+
 0.09 Sun Sep 16 09:25:25 CEST 2007
          - fixed a small bug important bug in namespace setting when binding
            a resource. this was a showstopper for eg. jabber.org.

@@ -56,8 +56,7 @@ be used to send this message when the C<send> method is called.
 
 =item to => $jid
 
-This is the destination JID of this message. C<$jid> should
-be a bare JID when the message is sent out of a conversation 'context'.
+This is the destination JID of this message.
 C<$jid> should be full if this message is send within a conversation
 'context', for example when replying to a previous message.
 
