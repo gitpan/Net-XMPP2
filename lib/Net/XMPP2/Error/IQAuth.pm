@@ -1,5 +1,6 @@
 package Net::XMPP2::Error::IQAuth;
 use Net::XMPP2::Error;
+use strict;
 our @ISA = qw/Net::XMPP2::Error/;
 
 =head1 NAME
@@ -12,7 +13,7 @@ Subclass of L<Net::XMPP2::Error>
 
 =over 4
 
-=item B<type>
+=item B<context>
 
 This method returns either:
 

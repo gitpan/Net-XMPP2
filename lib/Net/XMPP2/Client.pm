@@ -4,9 +4,9 @@ use AnyEvent;
 use Net::XMPP2::IM::Connection;
 use Net::XMPP2::Util qw/stringprep_jid prep_bare_jid dump_twig_xml bare_jid/;
 use Net::XMPP2::Namespaces qw/xmpp_ns/;
-use Net::XMPP2::Event;
 use Net::XMPP2::Extendable;
 use Net::XMPP2::IM::Account;
+use BS::Event;
 
 #use XML::Twig;
 #
@@ -22,7 +22,7 @@ use Net::XMPP2::IM::Account;
 #   }
 #}
 
-our @ISA = qw/Net::XMPP2::Event Net::XMPP2::Extendable/;
+our @ISA = qw/BS::Event Net::XMPP2::Extendable/;
 
 =head1 NAME
 
@@ -196,7 +196,6 @@ sub update_connections {
             $self->event (connect_error => "Couldn't connect to ".($acc->jid).": $!");
             next
          }
-         $con->init
       }
    }
 }
@@ -229,9 +228,10 @@ sub remove_accounts {
    }
 }
 
-=head2 remove_account ($acc)
+=head2 remove_account ($acc, $reason)
 
-Removes and disconnects account C<$acc>.
+Removes and disconnects account C<$acc> (which is a L<Net::XMPP2::IM::Account> object).
+The reason for the removal can be given via C<$reason>.
 
 =cut
 
@@ -463,10 +463,14 @@ This event is sent when the C<$account> was successfully connected.
 This event is emitted when an error occured in the connection process for the
 account C<$account>.
 
-=item error => $account
+=item error => $account, $error
 
 This event is emitted when any error occured while communicating
 over the connection to the C<$account> - after a connection was established.
+
+C<$error> is an error object which is derived from L<Net::XMPP2::Error>.
+It will reveal human readable information about the error by calling the C<string ()>
+method (which returns a descriptive error string about the nature of the error).
 
 =back
 

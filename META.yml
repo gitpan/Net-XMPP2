@@ -1,13 +1,16 @@
 --- #YAML:1.0
 name:                Net-XMPP2
-version:             0.10
+version:             0.11
 abstract:            An implementation of the XMPP Protocol
 license:             perl
-generated_by:        ExtUtils::MakeMaker version 6.32
+author:              
+    - Robin Redeker <elmex@ta-sa.org>
+generated_by:        ExtUtils::MakeMaker version 6.42
 distribution_type:   module
 requires:     
     AnyEvent:                      0
     Authen::SASL:                  0
+    BS::Event:                     0
     Digest::SHA1:                  0
     MIME::Base64:                  0
     Net::DNS:                      0
@@ -16,7 +19,5 @@ requires:
     XML::Parser::Expat:            0
     XML::Writer:                   0
 meta-spec:
-    url:     http://module-build.sourceforge.net/META-spec-v1.2.html
-    version: 1.2
-author:
-    - Robin Redeker <elmex@ta-sa.org>
+    url:     http://module-build.sourceforge.net/META-spec-v1.3.html
+    version: 1.3

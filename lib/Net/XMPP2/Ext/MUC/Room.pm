@@ -6,10 +6,10 @@ use Net::XMPP2::Util qw/
    bare_jid prep_bare_jid cmp_jid split_jid join_jid is_bare_jid
    prep_res_jid prep_join_jid resourceprep
 /;
-use Net::XMPP2::Event;
 use Net::XMPP2::Ext::MUC::User;
 use Net::XMPP2::Ext::DataForm;
 use Net::XMPP2::Error::MUC;
+use BS::Event;
 
 use constant {
    JOIN_SENT => 1,
@@ -17,7 +17,7 @@ use constant {
    LEFT      => 3,
 };
 
-our @ISA = qw/Net::XMPP2::Event/;
+our @ISA = qw/BS::Event/;
 
 =head1 NAME
 
@@ -241,6 +241,17 @@ sub get_user_jid {
    my ($room, $srv, $nick) = split_jid ($jid);
    return unless prep_join_jid ($room, $srv) eq prep_bare_jid $self->jid;
    $self->{users}->{$nick}
+}
+
+=item B<get_users>
+
+This method returns the list of occupants as L<Net::XMPP2::Ext::MUC::User> objects.
+
+=cut
+
+sub get_users {
+   my ($self) = @_;
+   values %{$self->{users}};
 }
 
 sub add_user_xml {

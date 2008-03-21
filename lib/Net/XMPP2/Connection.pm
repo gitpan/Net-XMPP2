@@ -5,16 +5,16 @@ use IO::Socket::INET;
 use Net::XMPP2::Parser;
 use Net::XMPP2::Writer;
 use Net::XMPP2::Util qw/split_jid join_jid simxml/;
-use Net::XMPP2::Event;
 use Net::XMPP2::SimpleConnection;
 use Net::XMPP2::Namespaces qw/xmpp_ns/;
 use Net::XMPP2::Extendable;
 use Net::XMPP2::Error;
+use BS::Event;
 use Net::DNS;
 use Digest::SHA1 qw/sha1_hex/;
 use Encode;
 
-our @ISA = qw/Net::XMPP2::SimpleConnection Net::XMPP2::Event Net::XMPP2::Extendable/;
+our @ISA = qw/Net::XMPP2::SimpleConnection BS::Event Net::XMPP2::Extendable/;
 
 =head1 NAME
 
@@ -32,7 +32,6 @@ Net::XMPP2::Connection - XML stream that implements the XMPP RFC 3920.
       );
 
    $con->connect or die "Couldn't connect to jabber.org: $!";
-   $con->init;
    $con->reg_cb (stream_ready => sub { print "XMPP stream ready!\n" });
 
 =head1 DESCRIPTION
@@ -83,19 +82,29 @@ As the connection won't be automatically connected use C<connect>
 to initiate the connect.
 
 Note: A SRV RR lookup will be performed to discover the real hostname
-and port to connect to. See also C<connect>.
+and port to connect to. See also C<connect>. This option is usually not
+very useful if SRV RR lookup is performed, as it is only used as a fallback.
+If you want to force the hostname to a certain value use C<override_host>,
+which also disabled SRV RR lookup.
 
 =item override_host => $host
+
+If this option is set no SRV RR lookup is performed and the C<$host>
+will be used to connect to.
+
 =item override_port => $port
 
-This will be used as override to connect to.
+If this option is set the port of the server we are going to connect to
+is forced to C<$port> (even if SRV RR tells us something different).
 
 =item port => $port
 
 This is optional, the default port is 5222.
 
 Note: A SRV RR lookup will be performed to discover the real hostname
-and port to connect to. See also C<connect>.
+and port to connect to. See also C<connect>. This option is usually not
+very useful if SRV RR lookup is performed, as it is only used as a fallback.
+If you want to force the port to a certain value use C<override_port>.
 
 =item username => $username
 
@@ -314,6 +323,9 @@ successful (as SRV RR lookup may return multiple hosts) call C<may_try_connect>
 Note that an internal list will be kept of tried hosts.  Use
 C<reset_connect_tries> to reset the internal list of tried hosts.
 
+Also note that the "XML" stream initiation is sent when the connection
+was successfully connected.
+
 =cut
 
 sub connect {
@@ -322,7 +334,6 @@ sub connect {
    my ($host, $port) = ($self->{domain}, $self->{port} || 5222);
    if ($self->{override_host}) {
       $host = $self->{override_host};
-      $port = $self->{override_port} if defined $self->{override_port};
 
    } else {
       unless ($no_srv_rr) {
@@ -340,7 +351,10 @@ sub connect {
       }
    }
 
+   $port = $self->{override_port} if defined $self->{override_port};
+
    if ($self->SUPER::connect ($host, $port)) {
+      $self->init;
       $self->event (connect => $host, $port);
       return 1;
    } else {
@@ -448,11 +462,7 @@ sub handle_stanza {
    }
 }
 
-=item B<init ()>
-
-Initiate the XML stream.
-
-=cut
+# This method is private
 
 sub init {
    my ($self) = @_;

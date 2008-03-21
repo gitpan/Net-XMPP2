@@ -2,6 +2,7 @@ package Net::XMPP2::Ext::Version;
 use Net::XMPP2::Namespaces qw/xmpp_ns/;
 use Net::XMPP2::Util qw/simxml/;
 use Net::XMPP2::Ext;
+use strict;
 
 our @ISA = qw/Net::XMPP2::Ext/;
 
@@ -121,7 +122,7 @@ sub version_result {
 sub handle_query {
    my ($self, $con, $node) = @_;
 
-   if (($q) = $node->find_all ([qw/version query/])) {
+   if (my ($q) = $node->find_all ([qw/version query/])) {
       my @result = $self->version_result;
       $con->reply_iq_result (
          $node, {
