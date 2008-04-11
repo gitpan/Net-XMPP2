@@ -31,8 +31,8 @@ Net::XMPP2::Connection - XML stream that implements the XMPP RFC 3920.
          resource => "Net::XMPP2"
       );
 
-   $con->connect or die "Couldn't connect to jabber.org: $!";
    $con->reg_cb (stream_ready => sub { print "XMPP stream ready!\n" });
+   $con->connect; # will do non-blocking connect
 
 =head1 DESCRIPTION
 
@@ -105,6 +105,12 @@ Note: A SRV RR lookup will be performed to discover the real hostname
 and port to connect to. See also C<connect>. This option is usually not
 very useful if SRV RR lookup is performed, as it is only used as a fallback.
 If you want to force the port to a certain value use C<override_port>.
+
+=item connect_timeout => $timeout
+
+This sets the connection timeout. If the socket connect takes too long
+a C<disconnect> event will be generated with an appropriate error message.
+If this argument is not given no timeout is installed for the connects.
 
 =item username => $username
 
@@ -302,7 +308,7 @@ sub new {
 
 =item B<connect ($no_srv_rr)>
 
-Try to connect to the domain and port passed in C<new>.
+Try to connect (non blocking) to the domain and port passed in C<new>.
 
 A SRV RR lookup will be performed on the domain to discover
 the host and port to use. If you don't want this set C<$no_srv_rr>
@@ -312,18 +318,14 @@ As the SRV RR lookup might return multiple host and you fail to
 connect to one you might just call this function again to try a
 different host.
 
-If C<connect> was successful and we connected a true value is returned.
-If the connect was unsuccessful undef is returned and C<$!> will be set
-to the error that occured while connecting.
+The connection is performed non blocking, so this method will just
+trigger the connection process. The event C<connect> will be emitted
+when the connection was successfully established.
 
-If you want to know whether further connection attempts might be more
-successful (as SRV RR lookup may return multiple hosts) call C<may_try_connect>
-(see also C<may_try_connect>).
+If the connection try was not successful a C<disconnect> event
+will be generated with an error message.
 
-Note that an internal list will be kept of tried hosts.  Use
-C<reset_connect_tries> to reset the internal list of tried hosts.
-
-Also note that the "XML" stream initiation is sent when the connection
+NOTE: The "XML" stream initiation is sent when the connection
 was successfully connected.
 
 =cut
@@ -353,41 +355,13 @@ sub connect {
 
    $port = $self->{override_port} if defined $self->{override_port};
 
-   if ($self->SUPER::connect ($host, $port)) {
-      $self->init;
-      $self->event (connect => $host, $port);
-      return 1;
-   } else {
-      return undef;
-   }
+   $self->SUPER::connect ($host, $port, $self->{connect_timeout});
 }
 
-=item B<may_try_connect>
-
-Returns the number of left alternatives of hosts to connect to for the
-domain passed to C<new>.
-
-An internal list of tried hosts will be managed by C<connect> and those
-hosts will be ignored by a SRV RR lookup (which will be done if you
-call this function).
-
-Use C<reset_connect_tries> to reset the internal list of tried hosts.
-
-=cut
-
-sub may_try_connect {
-   # TODO
-}
-
-=item B<reset_connect_tries>
-
-This function resets the internal list of tried hosts for C<connect>.
-See also C<connect>.
-
-=cut
-
-sub reset_connect_tries {
-   # TODO
+sub connected {
+   my ($self) = @_;
+   $self->init;
+   $self->event (connect => $self->{host}, $self->{port});
 }
 
 sub handle_data {
@@ -498,7 +472,11 @@ sub set_default_iq_timeout {
 
 =item B<send_iq ($type, $create_cb, $result_cb, %attrs)>
 
-This method sends an IQ XMPP request.
+This method sends an IQ XMPP B<request>.
+
+If you want to B<respond> to a IQ request you received via the C<iq_set_request_xml>,
+and C<iq_get_request_xml> events you have to use the C<reply_iq_result> or
+C<reply_iq_error> methods documented below.
 
 Please take a look at the documentation for C<send_iq> in Net::XMPP2::Writer
 about the meaning of C<$type>, C<$create_cb> and C<%attrs> (with the exception
@@ -989,6 +967,14 @@ sub stream_id { $_[0]->{stream_id} }
 
 =head1 EVENTS
 
+The L<Net::XMPP2::Connection> class is derived from the L<BS::Event> class,
+and thus inherits the event callback registering system from it. Consult the
+documentation of L<BS::Event> about more details.
+
+NODE: Every callback gets as it's first argument the L<Net::XMPP2::Connection>
+object. The further callback arguments are described in the following listing of
+events.
+
 These events can be registered on with C<reg_cb>:
 
 =over 4
@@ -1177,7 +1163,7 @@ Example:
    # this appends a <test/> element to all outgoing IQs
    # and also a <test2/> element to all outgoing IQs
    $con->reg_cb (send_iq_hook => sub {
-      my ($id, $type, $attrs) = @_;
+      my ($con, $id, $type, $attrs) = @_;
       (sub {
          my $w = shift; # $w is a XML::Writer instance
          $w->emptyTag ('test');

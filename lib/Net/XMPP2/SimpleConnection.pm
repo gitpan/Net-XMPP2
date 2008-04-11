@@ -68,22 +68,58 @@ sub set_noblock {
 }
 
 sub connect {
-   my ($self, $host, $port) = @_;
+   my ($self, $host, $port, $timeout) = @_;
 
    $self->{socket}
       and return 1;
 
-   my $sock = IO::Socket::INET->new (
+   $self->{host} = $host;
+   $self->{port} = $port;
+
+   $self->{socket} = IO::Socket::INET->new (
       PeerAddr => $host,
       PeerPort => $port,
       Proto    => 'tcp',
-      Blocking => 1
+      Blocking => 0,
    );
-   return undef unless $sock;;
 
-   $self->{socket} = $sock;
-   $self->{host}   = $host;
-   $self->{port}   = $port;
+   unless (defined $self->{socket}) {
+      $self->disconnect ("Couldn't create socket to $host:$port: $!");
+      return 0;
+   }
+
+   if (defined $timeout) {
+      $self->{con_tout} =
+         AnyEvent->timer (after => $timeout, cb => sub {
+            delete $self->{con_wat};
+            $self->disconnect ("Couldn't connect to $host:$port: Timeout");
+         });
+   }
+
+   $self->{con_wat} =
+      AnyEvent->io (poll => 'w', fh => $self->{socket}, cb => sub {
+         delete $self->{con_wat};
+
+         if ($! = $self->{socket}->sockopt (SO_ERROR)) {
+            $self->disconnect ("Couldn't connect to $host:$port: $!");
+         } else {
+            $self->finish_connect;
+         }
+      });
+
+   return 1;
+}
+
+sub finish_connect {
+   my ($self) = @_;
+   my ($host, $port, $sock) =
+      ($self->{host}, $self->{port}, $self->{socket});
+
+   unless ($sock) {
+      $self->disconnect ("Couldn't connect to $host:$port: $!");
+      return undef;
+   }
+
    delete $self->{read_buffer};
    delete $self->{write_buffer};
 
@@ -111,6 +147,8 @@ sub connect {
             }
          }
       });
+
+   $self->connected;
    return 1;
 }
 
@@ -126,7 +164,7 @@ sub end_sockets {
       Net::SSLeay::CTX_free ($self->{ctx});
       delete $self->{ctx};
    }
-   close ($self->{socket});
+   close ($self->{socket}) if $self->{socket};
    delete $self->{socket};
 }
 

@@ -8,11 +8,11 @@ Net::XMPP2 - An implementation of the XMPP Protocol
 
 =head1 VERSION
 
-Version 0.11
+Version 0.12
 
 =cut
 
-our $VERSION = '0.11';
+our $VERSION = '0.12';
 
 =head1 SYNOPSIS
 
@@ -121,6 +121,19 @@ Here are some notes to the last releases (release of this version is at top):
 =head2 Version
 
 =over 4
+
+=item * 0.12
+
+B<API CHANGE:> The connects are now non-blocking, you should revisit the
+places you use the C<connect> method of Net::XMPP2::Connection/::IM::Connection
+directly!
+
+Implemented XEP-0054 and XEP-0153 (see L<Net::XMPP2::Ext::VCard>),
+on top of that a serious bug in C<split_jid> in L<Net::XMPP2::Util> was fixed
+and a C<connect_timeout> argument can be set now for L<Net::XMPP2::Connection>.
+
+Aside from that a few changes here and there, but nothing serious,
+see the C<Changes> file.
 
 =item * 0.11
 
@@ -394,6 +407,13 @@ for an account and print it to stdout. You start it like this:
 
    samples/# ./retrieve_roster <jid> <password>
 
+=item B<samples/display_avatar>
+
+This is just a small example which should display the avatar
+of the account you connect to. It can be used like this:
+
+   samples/# ./display_avatar <jid> <password>
+
 =back
 
 For others, which the author might forgot or didn't want to
@@ -477,6 +497,12 @@ module to a usable state.
 Thanks to:
 
 =over 4
+
+=item * J. Cameijo Cerdeira
+
+For pointing out a serious bug in C<split_jid> in L<Net::XMPP2::Util>
+and suggesting to add a timeout argument to the C<connect> method of
+L<Net::XMPP2::SimpleConnection>.
 
 =item * Carlo von Loesch (aka lynX) L<http://www.psyced.org/>
 
