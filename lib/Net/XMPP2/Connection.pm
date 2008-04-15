@@ -9,12 +9,12 @@ use Net::XMPP2::SimpleConnection;
 use Net::XMPP2::Namespaces qw/xmpp_ns/;
 use Net::XMPP2::Extendable;
 use Net::XMPP2::Error;
-use BS::Event;
+use Object::Event;
 use Net::DNS;
 use Digest::SHA1 qw/sha1_hex/;
 use Encode;
 
-our @ISA = qw/Net::XMPP2::SimpleConnection BS::Event Net::XMPP2::Extendable/;
+our @ISA = qw/Net::XMPP2::SimpleConnection Object::Event Net::XMPP2::Extendable/;
 
 =head1 NAME
 
@@ -170,6 +170,16 @@ is true.
 This will set the whitespace ping interval (in seconds). The default interval
 are 60 seconds.  You can disable the whitespace ping by setting C<$interval> to
 0.
+
+=item blocking_write => $bool
+
+This is a special option which will make all send operations C<send_message>, C<send_iq>
+and C<send_presence> block until the output buffer is empty. If this option is
+enabled every C<send_message>, C<send_iq> and C<send_presence> call will call
+C<drain> internally to block until the output buffer is empty.
+
+This option is DISABLED by default and you should only enable it if you know
+what you are doing.
 
 =back
 
@@ -362,6 +372,11 @@ sub connected {
    my ($self) = @_;
    $self->init;
    $self->event (connect => $self->{host}, $self->{port});
+}
+
+sub send_buffer_empty {
+   my ($self) = @_;
+   $self->event ('send_buffer_empty');
 }
 
 sub handle_data {
@@ -963,13 +978,28 @@ This is the ID of this stream that was given us by the server.
 
 sub stream_id { $_[0]->{stream_id} }
 
+=item B<drain>
+
+This method will block until the output buffer is empty.
+For example if you want to block the program until the message sent
+by C<send_message>, C<send_iq> or C<send_presence> or any other
+sending method, is written out to the kernel completly.
+
+NOTE: Use this method only if you know what you are doing!
+
+Also note that this function will emit the C<send_buffer_empty> event when
+the buffer was emptied successfully. On error the connection is disconnected
+with the error message.
+
+=cut
+
 =back
 
 =head1 EVENTS
 
-The L<Net::XMPP2::Connection> class is derived from the L<BS::Event> class,
+The L<Net::XMPP2::Connection> class is derived from the L<Object::Event> class,
 and thus inherits the event callback registering system from it. Consult the
-documentation of L<BS::Event> about more details.
+documentation of L<Object::Event> about more details.
 
 NODE: Every callback gets as it's first argument the L<Net::XMPP2::Connection>
 object. The further callback arguments are described in the following listing of
@@ -1111,6 +1141,21 @@ application of "XML" sucks?).
 So you might want to use C<recv_stanza_xml> to detect
 complete stanzas. Unfortunately C<recv_stanza_xml> doesn't have the
 bytes anymore and just a datastructure (L<Net::XMPP2::Node>).
+
+=item send_buffer_empty
+
+This event is VERY useful if you want to wait (or at least be notified)
+when the output buffer is empty. If you got a bunch of messages to sent
+or even one and you want to do something when the output buffer is empty,
+you can wait for this event. It is emitted everytime the output buffer is
+completly written out to the kernel.
+
+Here is an example:
+
+   $con->reg_cb (send_buffer_empty => sub {
+      $con->disconnect ("wrote message, going to disconnect now...");
+   });
+   $con->send_message ("Test message!" => 'elmex@jabber.org', undef, 'chat');
 
 =item presence_xml => $node
 

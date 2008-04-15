@@ -16,6 +16,7 @@ plan skip_all => "Pod::Coverage $min_pc required for testing POD coverage"
     if $@;
 
 my %SPEC = (
+   'Net::XMPP2::Ext::VCard'         => [qw/DESTROY _publish_avatar _retrieve _store decode_vcard encode_vcard init/],
    'Net::XMPP2::Ext::Disco::Items'  => [qw/init new/],
    'Net::XMPP2::Ext::Disco::Info'   => [qw/init new/],
    'Net::XMPP2::Ext::MUC::Message'  => [qw/from_node/],
@@ -65,15 +66,15 @@ my %SPEC = (
       debug_wrote_data do_iq_auth do_iq_auth_send handle_data handle_error
       handle_iq handle_sasl_challenge handle_sasl_success handle_stanza
       handle_stream_features init send_sasl_auth start_old_style_authentication
-      write_data
+      write_data connected
    /],
-   'Net::XMPP2::Parser' => [qw/cb_char_data cb_end_tag cb_start_tag/],
+   'Net::XMPP2::Parser' => [qw/cb_char_data cb_end_tag cb_start_tag cb_default/],
    'Net::XMPP2::Component' => [qw/authenticate/],
    'Net::XMPP2::Writer' => [qw/_fetch_cb_additions _generate_key_xml
                            _generate_key_xmls _trans_create_cb/],
    'Net::XMPP2::SimpleConnection' => [qw/ connect disconnect enable_ssl end_sockets
       make_ssl_read_watcher make_ssl_write_watcher new set_block set_noblock try_ssl_read
-      try_ssl_write write_data
+      try_ssl_write write_data drain send_buffer_empty
    /],
    'Net::XMPP2::Client' => [qw/add_extension/],
    'Net::XMPP2::TestClient' => [qr/./],

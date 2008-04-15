@@ -10,9 +10,11 @@ t/pod-coverage.t
 t/datetime.t
 t/xml_filter_chars.t
 t/jidsplit.t
+t/parser_test.t
 t/z_00_register.t
 t/z_01_message.t
 t/z_01_message_tracking.t
+t/z_01_message_block.t
 t/z_02_disco.t
 t/z_03_iq_auth.t
 t/z_04_presence.t

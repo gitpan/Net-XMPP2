@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:                Net-XMPP2
-version:             0.12
+version:             0.13
 abstract:            An implementation of the XMPP Protocol
 license:             perl
 author:              
@@ -10,12 +10,12 @@ distribution_type:   module
 requires:     
     AnyEvent:                      0
     Authen::SASL:                  0
-    BS::Event:                     0
     Digest::SHA1:                  0
     MIME::Base64:                  0
     Net::DNS:                      0
     Net::LibIDN:                   0
     Net::SSLeay:                   0
+    Object::Event:                 0
     Scalar::Util:                  0
     XML::Parser::Expat:            0
     XML::Writer:                   0

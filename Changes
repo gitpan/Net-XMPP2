@@ -1,6 +1,16 @@
 Revision history for Net-XMPP2
 
-0.12
+0.13
+         - added a 'send_buffer_empty' event, to be able to wait
+           for an empty send buffer. and also the C<drain> method, which
+           will block until the send buffer is empty. also added a C<blocking_write>
+           option for L<Net::XMPP2::Connection>.
+         - added a default handler to L<Net::XMPP2::Parser> which
+           recognizes and stores CDATA now correctly, so that it can
+           be retrieved from the nodes structure by the C<as_string> method
+           of L<Net::XMPP2::Node> correctly.
+
+0.12 Fri Apr 11 16:30:40 CEST 2008
          - API CHANGE: The C<connect> method of L<Net::XMPP2::SimpleConnection>
            and thus L<Net::XMPP2::Connection> is now non-blocking!
            IMPORTANT: Please revisit your connection code and adjust accordingly!
