@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:                Net-XMPP2
-version:             0.13
+version:             0.14
 abstract:            An implementation of the XMPP Protocol
 license:             perl
 author:              
